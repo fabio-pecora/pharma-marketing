@@ -10,10 +10,12 @@ type Claim = {
 
 export default function Page() {
   const [audience, setAudience] = useState("HCP");
+  const [category, setCategory] = useState("efficacy");
+  const [therapeuticArea, setTherapeuticArea] = useState("Oncology");
+
   const [contentType, setContentType] = useState("email");
   const [goal, setGoal] = useState("education");
   const [tone, setTone] = useState("clinical");
-  const [therapeuticArea, setTherapeuticArea] = useState("");
 
   const [claims, setClaims] = useState<Claim[]>([]);
   const [selectedClaims, setSelectedClaims] = useState<number[]>([]);
@@ -21,10 +23,11 @@ export default function Page() {
 
   async function loadClaims() {
     const res = await fetch(
-      `http://127.0.0.1:8000/recommended-claims?audience=${audience}`,
+      `http://127.0.0.1:8000/recommended-claims?audience=${audience}&category=${category}&therapeutic_area=${therapeuticArea}`,
     );
 
     const data = await res.json();
+
     setClaims(data);
   }
 
@@ -42,11 +45,6 @@ export default function Page() {
       return;
     }
 
-    if (!therapeuticArea) {
-      alert("Please enter a therapeutic area");
-      return;
-    }
-
     const res = await fetch("http://127.0.0.1:8000/generate-content", {
       method: "POST",
       headers: {
@@ -54,9 +52,9 @@ export default function Page() {
       },
       body: JSON.stringify({
         content_type: contentType,
-        audience: audience,
-        goal: goal,
-        tone: tone,
+        audience,
+        goal,
+        tone,
         therapeutic_area: therapeuticArea,
         claim_ids: selectedClaims,
       }),
@@ -64,11 +62,7 @@ export default function Page() {
 
     const data = await res.json();
 
-    if (data.html) {
-      setHtml(data.html);
-    } else {
-      alert("Content generation failed");
-    }
+    setHtml(data.html);
   }
 
   return (
@@ -77,7 +71,8 @@ export default function Page() {
 
       {/* Audience */}
       <div className="mb-4">
-        <label className="mr-2 font-medium">Audience</label>
+        <label className="mr-2">Audience</label>
+
         <select
           value={audience}
           onChange={(e) => setAudience(e.target.value)}
@@ -88,9 +83,49 @@ export default function Page() {
         </select>
       </div>
 
+      {/* Category */}
+      <div className="mb-4">
+        <label className="mr-2">Category</label>
+
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="border p-2 bg-white text-black"
+        >
+          <option value="efficacy">Efficacy</option>
+          <option value="safety">Safety</option>
+          <option value="dosing">Dosing</option>
+          <option value="mechanism_of_action">Mechanism of Action</option>
+          <option value="clinical_evidence">Clinical Evidence</option>
+        </select>
+      </div>
+
+      {/* Therapeutic Area */}
+      <div className="mb-4">
+        <label className="mr-2">Therapeutic Area</label>
+
+        <select
+          value={therapeuticArea}
+          onChange={(e) => setTherapeuticArea(e.target.value)}
+          className="border p-2 bg-white text-black"
+        >
+          <option value="Oncology">Oncology</option>
+          <option value="Cardiology">Cardiology</option>
+          <option value="Neurology">Neurology</option>
+          <option value="Immunology">Immunology</option>
+          <option value="Endocrinology">Endocrinology</option>
+          <option value="Gastroenterology">Gastroenterology</option>
+          <option value="Infectious Diseases">Infectious Diseases</option>
+          <option value="Respiratory">Respiratory</option>
+          <option value="Dermatology">Dermatology</option>
+          <option value="Rare Diseases">Rare Diseases</option>
+        </select>
+      </div>
+
       {/* Content Type */}
       <div className="mb-4">
-        <label className="mr-2 font-medium">Content Type</label>
+        <label className="mr-2">Content Type</label>
+
         <select
           value={contentType}
           onChange={(e) => setContentType(e.target.value)}
@@ -104,7 +139,8 @@ export default function Page() {
 
       {/* Goal */}
       <div className="mb-4">
-        <label className="mr-2 font-medium">Goal</label>
+        <label className="mr-2">Goal</label>
+
         <select
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
@@ -118,7 +154,8 @@ export default function Page() {
 
       {/* Tone */}
       <div className="mb-4">
-        <label className="mr-2 font-medium">Tone</label>
+        <label className="mr-2">Tone</label>
+
         <select
           value={tone}
           onChange={(e) => setTone(e.target.value)}
@@ -130,19 +167,6 @@ export default function Page() {
         </select>
       </div>
 
-      {/* Therapeutic Area */}
-      <div className="mb-4">
-        <label className="mr-2 font-medium">Therapeutic Area</label>
-        <input
-          type="text"
-          value={therapeuticArea}
-          onChange={(e) => setTherapeuticArea(e.target.value)}
-          placeholder="e.g. metastatic colorectal cancer"
-          className="border p-2 w-full bg-white text-black"
-        />
-      </div>
-
-      {/* Get Claims */}
       <button
         onClick={loadClaims}
         className="bg-blue-600 text-white px-4 py-2 rounded"
@@ -150,7 +174,6 @@ export default function Page() {
         Get Recommended Claims
       </button>
 
-      {/* Claims */}
       <div className="mt-6">
         {claims.map((claim) => (
           <div key={claim.id} className="p-3 border rounded mb-2">
@@ -170,7 +193,6 @@ export default function Page() {
         ))}
       </div>
 
-      {/* Generate */}
       <button
         onClick={generate}
         className="bg-green-600 text-white px-4 py-2 mt-4 rounded"
@@ -178,7 +200,6 @@ export default function Page() {
         Generate Content
       </button>
 
-      {/* Preview */}
       <div className="mt-8 border p-6">
         <h2 className="text-xl font-bold mb-3">HTML Preview</h2>
 

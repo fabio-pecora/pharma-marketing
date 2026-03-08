@@ -1,7 +1,7 @@
 from database import get_connection
 
 
-def get_recommended_claims(audience):
+def get_recommended_claims(audience, category, therapeutic_area):
 
     conn = get_connection()
     cur = conn.cursor()
@@ -10,10 +10,13 @@ def get_recommended_claims(audience):
     SELECT id, claim_text, citation
     FROM claims
     WHERE LOWER(audience) = LOWER(%s)
+    AND LOWER(category) = LOWER(%s)
+    AND LOWER(therapeutic_area) = LOWER(%s)
     LIMIT 10
     """
 
-    cur.execute(query, (audience,))
+    cur.execute(query, (audience, category, therapeutic_area))
+
     rows = cur.fetchall()
 
     claims = []

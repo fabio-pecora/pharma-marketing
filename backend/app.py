@@ -7,7 +7,6 @@ from pipeline import generate_project_content
 
 app = FastAPI()
 
-# Allow frontend (Next.js) to call backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -18,8 +17,14 @@ app.add_middleware(
 
 
 @app.get("/recommended-claims")
-def recommended_claims(audience: str):
-    claims = get_recommended_claims(audience)
+def recommended_claims(audience: str, category: str, therapeutic_area: str):
+
+    claims = get_recommended_claims(
+        audience,
+        category,
+        therapeutic_area
+    )
+
     return claims
 
 
