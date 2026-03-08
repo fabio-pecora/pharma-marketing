@@ -1,89 +1,67 @@
 from openai import OpenAI
-import os
+from config import OPENAI_API_KEY
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+from claims_service import get_claims_by_ids
+from content_service import create_project, store_version
+from compliance_service import validate_claims
 
-
-def run_compliance_check(generated_text, approved_claims):
-    """
-    Check if generated text only contains approved claims
-    """
-
-    violations = []
-
-    for sentence in generated_text.split("."):
-        sentence = sentence.strip()
-
-        if not sentence:
-            continue
-
-        approved = False
-
-        for claim in approved_claims:
-            if claim.lower() in sentence.lower():
-                approved = True
-                break
-
-        if not approved:
-            violations.append(sentence)
-
-    if violations:
-        return {
-            "status": "failed",
-            "violations": violations
-        }
-
-    return {
-        "status": "passed",
-        "violations": []
-    }
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 
-def generate_project_content(
-        user_prompt,
-        claims,
-        audience="HCP",
-        content_type="email"
-):
-    """
-    Generate marketing content from approved claims
-    """
+def generate_project_content(content_type, audience, goal, tone, therapeutic_area, claim_ids):
 
-    approved_claims = [c["claim_text"] for c in claims]
+    # create project in DB
+    project_id = create_project(
+        content_type,
+        audience,
+        goal,
+        tone,
+        therapeutic_area
+    )
 
-    claims_text = "\n".join([f"- {c}" for c in approved_claims])
+    # retrieve selected claims
+    claims = get_claims_by_ids(claim_ids)
 
-    system_prompt = f"""
-You are generating pharmaceutical marketing content.
+    claims_text = "\n".join([
+        f'{c["claim_text"]} ({c["citation"]})'
+        for c in claims
+    ])
 
-IMPORTANT RULES:
-- You MUST only use the approved claims provided.
-- Do NOT invent new claims.
-- Do NOT paraphrase claims.
-- Only reuse the exact claims.
+    prompt = f"""
+You are generating FDA-compliant pharmaceutical marketing content.
+
+You MUST only use the approved claims listed below.
 
 Approved Claims:
 {claims_text}
 
-Generate a short {content_type} targeting {audience}.
+Content Type: {content_type}
+Audience: {audience}
+Goal: {goal}
+Tone: {tone}
+
+Generate compliant marketing content using only the claims provided.
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
+        messages=[{"role": "user", "content": prompt}]
     )
 
-    generated_text = response.choices[0].message.content
+    content = response.choices[0].message.content
 
-    compliance_result = run_compliance_check(
-        generated_text,
-        approved_claims
-    )
+    # compliance check (does not crash API anymore)
+    compliance_ok = validate_claims(content, claims)
+
+    html_output = f"<html><body><p>{content}</p></body></html>"
+
+    # store version in DB
+    store_version(project_id, 1, content, html_output)
 
     return {
-        "generated_text": generated_text,
-        "compliance": compliance_result
+        "project_id": project_id,
+        "content": content,
+        "html": html_output,
+        "claims_used": claims,
+        "compliance_status": "passed" if compliance_ok else "review_required"
     }

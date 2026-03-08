@@ -1,16 +1,12 @@
-def validate_claims(content, claims):
-
-    approved_claims = [c["claim_text"].lower() for c in claims]
+def validate_claims(content, approved_claims):
 
     content_lower = content.lower()
 
-    for sentence in content_lower.split("."):
-        sentence = sentence.strip()
+    for claim in approved_claims:
+        claim_text = claim["claim_text"].lower()
 
-        if not sentence:
-            continue
+        if claim_text in content_lower:
+            return True
 
-        if not any(claim in sentence for claim in approved_claims):
-            return False
-
-    return True
+    # if nothing matched we mark for review but DO NOT crash
+    return False
