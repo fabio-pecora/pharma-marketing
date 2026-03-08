@@ -1,0 +1,71 @@
+# -----------------
+# Python
+# -----------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.so
+*.egg-info/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Python environment variables
+.env
+
+# Python logs
+*.log
+
+# -----------------
+# FastAPI / Uvicorn
+# -----------------
+*.pid
+*.sock
+
+# -----------------
+# Node / Next.js
+# -----------------
+node_modules/
+.next/
+out/
+dist/
+
+# npm / yarn logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -----------------
+# OS files
+# -----------------
+.DS_Store
+Thumbs.db
+
+# -----------------
+# IDE
+# -----------------
+.vscode/
+.idea/
+
+# -----------------
+# Build artifacts
+# -----------------
+build/
+coverage/
+
+# -----------------
+# Temporary files
+# -----------------
+*.tmp
+*.temp
+
+# -----------------
+# Misc
+# -----------------
+*.sqlite
+*.db
