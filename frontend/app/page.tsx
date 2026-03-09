@@ -62,8 +62,14 @@ export default function Page() {
       setSelectedClaims([...selectedClaims, id]);
     }
   }
-
   async function generate() {
+    if (selectedClaims.length === 0) {
+      alert(
+        "Please select at least one approved claim before generating content.",
+      );
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -95,7 +101,6 @@ export default function Page() {
       setLoading(false);
     }
   }
-
   async function refine() {
     try {
       setLoading(true);
@@ -396,11 +401,15 @@ Generated using compliant claim-based AI content generation.
               <option value="educational">Educational</option>
             </select>
           </div>
-
           <button
             disabled={selectedClaims.length === 0 || loading}
             onClick={generate}
-            className="mt-6 bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg"
+            className={`mt-6 px-5 py-2 rounded-lg text-white
+            ${
+              selectedClaims.length === 0 || loading
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
           >
             {loading ? "Generating..." : "Generate Content"}
           </button>
