@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from models import ClaimSelectionRequest
+from models import ClaimSelectionRequest, RefineRequest
 from claims_service import get_recommended_claims
-from pipeline import generate_project_content
+from pipeline import generate_project_content, refine_generated_content
 
 app = FastAPI()
 
@@ -41,3 +41,15 @@ def generate_content(request: ClaimSelectionRequest):
     )
 
     return result
+
+
+@app.post("/refine-content")
+def refine_content(request: RefineRequest):
+
+    refined = refine_generated_content(
+        request.content,
+        request.refine_type,
+        request.instruction
+    )
+
+    return {"html": refined}

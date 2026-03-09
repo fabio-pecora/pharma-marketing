@@ -15,84 +15,6 @@ function extractText(html: string) {
   return div.innerText;
 }
 
-function EmailRenderer({ html }: { html: string }) {
-  const text = extractText(html);
-
-  const subjectMatch = text.match(/Subject:(.*)/i);
-  const subject = subjectMatch ? subjectMatch[1].trim() : "Generated Subject";
-
-  const body = text.replace(/Subject:.*\n?/i, "").trim();
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="text-sm font-semibold text-gray-700">Subject</label>
-
-        <input
-          value={subject}
-          readOnly
-          className="w-full border border-gray-300 rounded-lg p-3 text-black bg-white"
-        />
-      </div>
-
-      <div>
-        <label className="text-sm font-semibold text-gray-700">
-          Email Body
-        </label>
-
-        <div className="border border-gray-300 rounded-lg p-4 text-black bg-white whitespace-pre-line">
-          {body}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SocialRenderer({ html }: { html: string }) {
-  const text = extractText(html);
-
-  // Robust hashtag extraction
-  const hashtagMatches = text.match(/#[A-Za-z0-9_]+/g) || [];
-
-  const hashtags = hashtagMatches.join(" ");
-
-  const post = text.replace(/#[A-Za-z0-9_]+/g, "").trim();
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="text-sm font-semibold text-gray-700">Post</label>
-
-        <div className="border border-gray-300 rounded-lg p-4 text-black bg-white whitespace-pre-line">
-          {post}
-        </div>
-      </div>
-
-      <div>
-        <label className="text-sm font-semibold text-gray-700">Hashtags</label>
-
-        <div className="border border-gray-300 rounded-lg p-3 text-black bg-white">
-          {hashtags}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WebsiteRenderer({ html }: { html: string }) {
-  const text = extractText(html);
-
-  return (
-    <div>
-      <label className="text-sm font-semibold text-gray-700">Web Copy</label>
-
-      <div className="border border-gray-300 rounded-lg p-4 text-black bg-white whitespace-pre-line">
-        {text}
-      </div>
-    </div>
-  );
-}
-
 export default function Page() {
   const [audience, setAudience] = useState("HCP");
   const [category, setCategory] = useState("efficacy");
@@ -104,18 +26,29 @@ export default function Page() {
 
   const [claims, setClaims] = useState<Claim[]>([]);
   const [selectedClaims, setSelectedClaims] = useState<number[]>([]);
+
   const [generated, setGenerated] = useState("");
+
+  const [showRefine, setShowRefine] = useState(false);
+  const [refineType, setRefineType] = useState("shorten");
+  const [customPrompt, setCustomPrompt] = useState("");
+
+  const [loading, setLoading] = useState(false);
 
   const selectStyle =
     "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
   async function loadClaims() {
-    const res = await fetch(
-      `http://127.0.0.1:8000/recommended-claims?audience=${audience}&category=${category}&therapeutic_area=${therapeuticArea}`,
-    );
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/recommended-claims?audience=${audience}&category=${category}&therapeutic_area=${therapeuticArea}`,
+      );
 
-    const data = await res.json();
-    setClaims(data);
+      const data = await res.json();
+      setClaims(data);
+    } catch (error) {
+      console.error("Failed to load claims:", error);
+    }
   }
 
   function toggleClaim(id: number) {
@@ -127,23 +60,72 @@ export default function Page() {
   }
 
   async function generate() {
-    const res = await fetch("http://127.0.0.1:8000/generate-content", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        content_type: contentType,
-        audience,
-        goal,
-        tone,
-        therapeutic_area: therapeuticArea,
-        claim_ids: selectedClaims,
-      }),
-    });
+    try {
+      setLoading(true);
 
-    const data = await res.json();
-    setGenerated(data.html);
+      const res = await fetch("http://127.0.0.1:8000/generate-content", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content_type: contentType,
+          audience,
+          goal,
+          tone,
+          therapeutic_area: therapeuticArea,
+          claim_ids: selectedClaims,
+        }),
+      });
+
+      const data = await res.json();
+
+      setGenerated(data.html);
+      setShowRefine(false);
+    } catch (error) {
+      console.error("Generation failed:", error);
+      alert("Generation failed. Check backend.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function refine() {
+    try {
+      setLoading(true);
+
+      const textContent = extractText(generated);
+
+      const res = await fetch("http://127.0.0.1:8000/refine-content", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: textContent,
+          refine_type: refineType,
+          instruction: customPrompt,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Backend endpoint missing");
+      }
+
+      const data = await res.json();
+
+      setGenerated(data.html);
+
+      setShowRefine(false);
+      setCustomPrompt("");
+    } catch (error) {
+      console.error("Refine failed:", error);
+      alert(
+        "Refine endpoint not found. You need to implement /refine-content in the backend.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -204,10 +186,6 @@ export default function Page() {
                 <option value="efficacy">Efficacy</option>
                 <option value="safety">Safety</option>
                 <option value="dosing">Dosing</option>
-                <option value="mechanism_of_action">Mechanism of Action</option>
-                <option value="clinical_study">Clinical Study</option>
-                <option value="pharmacology">Pharmacology</option>
-                <option value="monitoring">Monitoring</option>
               </select>
             </div>
 
@@ -275,58 +253,40 @@ export default function Page() {
             Content Generation
           </h2>
 
-          <p className="text-gray-500 text-sm mb-6">
-            Configure generation settings.
-          </p>
-
           <div className="grid grid-cols-3 gap-6">
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Content Type
-              </label>
+            <select
+              value={contentType}
+              onChange={(e) => setContentType(e.target.value)}
+              className={selectStyle}
+            >
+              <option value="email">Email</option>
+              <option value="website">Website</option>
+              <option value="social">Social</option>
+            </select>
 
-              <select
-                value={contentType}
-                onChange={(e) => setContentType(e.target.value)}
-                className={selectStyle}
-              >
-                <option value="email">Email</option>
-                <option value="website">Website</option>
-                <option value="social">Social Post</option>
-              </select>
-            </div>
+            <select
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              className={selectStyle}
+            >
+              <option value="education">Education</option>
+              <option value="awareness">Awareness</option>
+              <option value="conversion">Conversion</option>
+            </select>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700">Goal</label>
-
-              <select
-                value={goal}
-                onChange={(e) => setGoal(e.target.value)}
-                className={selectStyle}
-              >
-                <option value="education">Education</option>
-                <option value="awareness">Awareness</option>
-                <option value="conversion">Conversion</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700">Tone</label>
-
-              <select
-                value={tone}
-                onChange={(e) => setTone(e.target.value)}
-                className={selectStyle}
-              >
-                <option value="clinical">Clinical</option>
-                <option value="empathetic">Empathetic</option>
-                <option value="educational">Educational</option>
-              </select>
-            </div>
+            <select
+              value={tone}
+              onChange={(e) => setTone(e.target.value)}
+              className={selectStyle}
+            >
+              <option value="clinical">Clinical</option>
+              <option value="empathetic">Empathetic</option>
+              <option value="educational">Educational</option>
+            </select>
           </div>
 
           <button
-            disabled={selectedClaims.length === 0}
+            disabled={selectedClaims.length === 0 || loading}
             onClick={generate}
             className={`mt-6 px-5 py-2 rounded-lg font-medium text-white ${
               selectedClaims.length === 0
@@ -334,7 +294,7 @@ export default function Page() {
                 : "bg-green-600 hover:bg-green-700"
             }`}
           >
-            Generate Content
+            {loading ? "Generating..." : "Generate Content"}
           </button>
         </div>
 
@@ -346,11 +306,54 @@ export default function Page() {
               Generated Content
             </h2>
 
-            {contentType === "email" && <EmailRenderer html={generated} />}
+            <textarea
+              value={generated}
+              onChange={(e) => setGenerated(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-4 text-black bg-white h-64"
+            />
 
-            {contentType === "social" && <SocialRenderer html={generated} />}
+            <button
+              onClick={() => setShowRefine(true)}
+              className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
+            >
+              Modify Generated Content
+            </button>
 
-            {contentType === "website" && <WebsiteRenderer html={generated} />}
+            {showRefine && (
+              <div className="mt-6 border-t pt-6 space-y-4">
+                <label className="text-sm font-medium text-gray-700">
+                  Refine Content
+                </label>
+
+                <select
+                  value={refineType}
+                  onChange={(e) => setRefineType(e.target.value)}
+                  className={selectStyle}
+                >
+                  <option value="shorten">Shorten Content</option>
+                  <option value="expand">Expand Explanation</option>
+                  <option value="reorganize">Reorganize Sections</option>
+                  <option value="emphasize">Emphasize Key Claim</option>
+                  <option value="simplify">Simplify Language</option>
+                  <option value="readability">Improve Readability</option>
+                </select>
+
+                <textarea
+                  placeholder="Optional custom instruction (max 300 characters)"
+                  maxLength={300}
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-3 text-black bg-white"
+                />
+
+                <button
+                  onClick={refine}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
+                >
+                  Apply Refinement
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
