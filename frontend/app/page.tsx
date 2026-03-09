@@ -370,33 +370,51 @@ Generated using compliant claim-based AI content generation.
           </p>
 
           <div className="grid grid-cols-3 gap-6">
-            <select
-              value={audience}
-              onChange={(e) => setAudience(e.target.value)}
-              className={selectStyle}
-            >
-              <option value="HCP">HCP</option>
-              <option value="Patient">Patient</option>
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Client
+              </label>
 
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className={selectStyle}
-            >
-              <option value="indication">Indication</option>
-              <option value="efficacy">Efficacy</option>
-              <option value="safety">Safety</option>
-              <option value="dosing">Dosing</option>
-            </select>
+              <select
+                value={audience}
+                onChange={(e) => setAudience(e.target.value)}
+                className={selectStyle}
+              >
+                <option value="HCP">HCP</option>
+                <option value="Patient">Patient</option>
+              </select>
+            </div>
 
-            <select
-              value={therapeuticArea}
-              onChange={(e) => setTherapeuticArea(e.target.value)}
-              className={selectStyle}
-            >
-              <option value="Oncology">Oncology</option>
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Claim Category
+              </label>
+
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className={selectStyle}
+              >
+                <option value="indication">Indication</option>
+                <option value="efficacy">Efficacy</option>
+                <option value="safety">Safety</option>
+                <option value="dosing">Dosing</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Therapeutic Area
+              </label>
+
+              <select
+                value={therapeuticArea}
+                onChange={(e) => setTherapeuticArea(e.target.value)}
+                className={selectStyle}
+              >
+                <option value="Oncology">Oncology</option>
+              </select>
+            </div>
           </div>
 
           <button
@@ -459,35 +477,53 @@ Generated using compliant claim-based AI content generation.
           </h2>
 
           <div className="grid grid-cols-3 gap-6">
-            <select
-              value={contentType}
-              onChange={(e) => setContentType(e.target.value)}
-              className={selectStyle}
-            >
-              <option value="email">Email</option>
-              <option value="website">Website</option>
-              <option value="social">Social</option>
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Content Type
+              </label>
 
-            <select
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              className={selectStyle}
-            >
-              <option value="education">Education</option>
-              <option value="awareness">Awareness</option>
-              <option value="conversion">Conversion</option>
-            </select>
+              <select
+                value={contentType}
+                onChange={(e) => setContentType(e.target.value)}
+                className={selectStyle}
+              >
+                <option value="email">Email</option>
+                <option value="website">Website</option>
+                <option value="social">Social</option>
+              </select>
+            </div>
 
-            <select
-              value={tone}
-              onChange={(e) => setTone(e.target.value)}
-              className={selectStyle}
-            >
-              <option value="clinical">Clinical</option>
-              <option value="empathetic">Empathetic</option>
-              <option value="educational">Educational</option>
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Marketing Goal
+              </label>
+
+              <select
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                className={selectStyle}
+              >
+                <option value="education">Education</option>
+                <option value="awareness">Awareness</option>
+                <option value="conversion">Conversion</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tone
+              </label>
+
+              <select
+                value={tone}
+                onChange={(e) => setTone(e.target.value)}
+                className={selectStyle}
+              >
+                <option value="clinical">Clinical</option>
+                <option value="empathetic">Empathetic</option>
+                <option value="educational">Educational</option>
+              </select>
+            </div>
           </div>
           <button
             disabled={selectedClaims.length === 0 || loading}
