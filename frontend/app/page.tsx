@@ -27,7 +27,11 @@ export default function Page() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [selectedClaims, setSelectedClaims] = useState<number[]>([]);
 
-  const [generated, setGenerated] = useState("");
+  // VERSION HISTORY
+  const [versions, setVersions] = useState<string[]>([]);
+  const [currentVersion, setCurrentVersion] = useState(0);
+
+  const generated = versions[currentVersion] || "";
 
   const [showRefine, setShowRefine] = useState(false);
   const [refineType, setRefineType] = useState("shorten");
@@ -80,7 +84,9 @@ export default function Page() {
 
       const data = await res.json();
 
-      setGenerated(data.html);
+      // start new version chain
+      setVersions([data.html]);
+      setCurrentVersion(0);
       setShowRefine(false);
     } catch (error) {
       console.error("Generation failed:", error);
@@ -110,7 +116,9 @@ export default function Page() {
 
       const data = await res.json();
 
-      setGenerated(data.html);
+      const newVersions = [...versions, data.html];
+      setVersions(newVersions);
+      setCurrentVersion(newVersions.length - 1);
 
       setShowRefine(false);
       setCustomPrompt("");
@@ -121,6 +129,13 @@ export default function Page() {
       setLoading(false);
     }
   }
+
+  function updateCurrentVersion(value: string) {
+    const updated = [...versions];
+    updated[currentVersion] = value;
+    setVersions(updated);
+  }
+
   function exportHTML() {
     if (!generated) return;
 
@@ -144,99 +159,98 @@ export default function Page() {
     }
 
     const fullHTML = `
-  <!DOCTYPE html>
-  <html>
-  <head>
-  <meta charset="UTF-8">
-  <title>FRUZAQLA Marketing Content</title>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>FRUZAQLA Marketing Content</title>
 
-  <style>
+<style>
 
-  body {
-    font-family: Arial, Helvetica, sans-serif;
-    background:#F3F4F6;
-    padding:40px;
-    margin:0;
-  }
+body {
+font-family: Arial, Helvetica, sans-serif;
+background:#F3F4F6;
+padding:40px;
+margin:0;
+}
 
-  .container {
-    max-width:640px;
-    margin:auto;
-    background:white;
-    border-radius:8px;
-    overflow:hidden;
-    box-shadow:0 4px 14px rgba(0,0,0,0.08);
-  }
+.container {
+max-width:640px;
+margin:auto;
+background:white;
+border-radius:8px;
+overflow:hidden;
+box-shadow:0 4px 14px rgba(0,0,0,0.08);
+}
 
-  .header {
-    background:#8C4799;
-    color:white;
-    padding:20px;
-    font-size:20px;
-    font-weight:600;
-  }
+.header {
+background:#8C4799;
+color:white;
+padding:20px;
+font-size:20px;
+font-weight:600;
+}
 
-  .content {
-    padding:32px;
-    color:#1F2937;
-    line-height:1.6;
-    font-size:16px;
-  }
+.content {
+padding:32px;
+color:#1F2937;
+line-height:1.6;
+font-size:16px;
+}
 
-  h2 {
-    color:#002855;
-    margin-top:0;
-  }
+h2 {
+color:#002855;
+margin-top:0;
+}
 
-  h3 {
-    color:#002855;
-    margin-top:24px;
-  }
+h3 {
+color:#002855;
+margin-top:24px;
+}
 
-  .divider {
-    height:4px;
-    background:#59C8E8;
-    width:80px;
-    margin:16px 0;
-  }
+.divider {
+height:4px;
+background:#59C8E8;
+width:80px;
+margin:16px 0;
+}
 
-  .footer {
-    background:#F9FAFB;
-    padding:20px;
-    font-size:12px;
-    color:#6B7280;
-  }
+.footer {
+background:#F9FAFB;
+padding:20px;
+font-size:12px;
+color:#6B7280;
+}
 
-  </style>
+</style>
 
-  </head>
+</head>
 
-  <body>
+<body>
 
-  <div class="container">
+<div class="container">
 
-  <div class="header">
-  <style="height:100px; vertical-align:middle; margin-right:15px;" />
-  FRUZAQLA Marketing Content
-  </div>
+<div class="header">
+FRUZAQLA Marketing Content
+</div>
 
-  <div class="content">
+<div class="content">
 
-  <div class="divider"></div>
+<div class="divider"></div>
 
-  ${htmlContent}
+${htmlContent}
 
-  </div>
+</div>
 
-  <div class="footer">
-  Generated using compliant claim-based AI content generation.
-  </div>
+<div class="footer">
+Generated using compliant claim-based AI content generation.
+</div>
 
-  </div>
+</div>
 
-  </body>
-  </html>
-  `;
+</body>
+</html>
+`;
 
     const blob = new Blob([fullHTML], { type: "text/html" });
 
@@ -398,9 +412,33 @@ export default function Page() {
               Generated Content
             </h2>
 
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm text-gray-500">
+                Version {currentVersion + 1} of {versions.length}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  disabled={currentVersion === 0}
+                  onClick={() => setCurrentVersion(currentVersion - 1)}
+                  className="px-4 py-2 bg-white border border-gray-400 rounded-md text-gray-800 font-medium hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200"
+                >
+                  ← Previous
+                </button>
+
+                <button
+                  disabled={currentVersion === versions.length - 1}
+                  onClick={() => setCurrentVersion(currentVersion + 1)}
+                  className="px-4 py-2 bg-white border border-gray-400 rounded-md text-gray-800 font-medium hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+
             <textarea
               value={generated}
-              onChange={(e) => setGenerated(e.target.value)}
+              onChange={(e) => updateCurrentVersion(e.target.value)}
               className="w-full border border-gray-300 rounded-lg p-4 text-black bg-white h-64"
             />
 
