@@ -71,9 +71,26 @@ Do NOT generate email or social content.
         format_rules = ""
 
     prompt = f"""
-You are generating compliant pharmaceutical marketing content.
+You are generating pharmaceutical marketing content using approved claims.
 
-You MUST only use the approved claims listed below.
+CLAIM RULES
+
+All approved claims MUST appear exactly as written.
+Do NOT modify the wording of the claims.
+Do NOT remove the claims.
+
+Outside of the claims, you are free to:
+
+- rewrite the surrounding content
+- change tone and style
+- reorganize sections
+- expand or shorten explanations
+- add neutral contextual information
+
+You may place the claims anywhere in the content.
+
+IMPORTANT:
+The claims must appear EXACTLY as written, but the rest of the text can be written freely.
 
 APPROVED CLAIMS
 {claims_text}
@@ -86,7 +103,6 @@ TONE: {tone}
 {format_rules}
 
 Return ONLY the requested format.
-Do not generate other sections.
 """
 
     response = client.chat.completions.create(
@@ -100,7 +116,14 @@ Do not generate other sections.
 
     generated_text = response.choices[0].message.content
 
-    compliance_passed = validate_claims(generated_text, claims)
+    try:
+        validate_claims(generated_text, claims)
+        compliance_passed = True
+
+    except ValueError as e:
+            return {
+                "error": str(e)
+            }
 
     store_version(
         project_id,
@@ -116,7 +139,7 @@ Do not generate other sections.
     }
 
 
-def refine_generated_content(content, refine_type, instruction):
+def refine_generated_content(content, refine_type, instruction, claims):
 
     refine_map = {
         "shorten": "Shorten the content while preserving the claims.",
@@ -129,8 +152,31 @@ def refine_generated_content(content, refine_type, instruction):
 
     refine_instruction = refine_map.get(refine_type, "")
 
+    claims_text = "\n".join(
+        [f"{c['claim_text']} ({c['citation']})" for c in claims]
+    )
+
     prompt = f"""
 You are refining pharmaceutical marketing content.
+
+CLAIM RULES
+
+All approved claims must remain exactly as written.
+You may NOT modify the wording of the claims.
+
+However, you may freely:
+
+- rewrite surrounding text
+- change tone and wording
+- shorten or expand explanations
+- reorganize the structure
+- improve readability
+
+Only the claim sentences must remain unchanged.
+Everything else may be rewritten.
+
+APPROVED CLAIMS
+{claims_text}
 
 REFINEMENT GOAL
 {refine_instruction}
@@ -152,6 +198,58 @@ Do not add explanations.
             {"role": "user", "content": prompt},
         ],
         temperature=0.4,
+    )
+
+    refined_text = response.choices[0].message.content
+
+    compliance_passed = validate_claims(refined_text, claims)
+
+    validate_claims(refined_text, claims)
+
+    return refined_text
+
+def generate_claim_request_email(audience, category, therapeutic_area):
+
+    prompt = f"""
+You are assisting a pharmaceutical marketing team.
+
+No approved claims were found in the claims library for the following request.
+
+Audience: {audience}
+Category: {category}
+Therapeutic Area: {therapeutic_area}
+
+Write a professional email requesting the Medical / Legal / Regulatory (MLR) team
+to review whether an approved claim exists or could be developed.
+
+The email should:
+
+- be professional
+- clearly explain the request
+- NOT suggest medical claims
+- simply request review or guidance
+
+FORMAT
+
+SUBJECT:
+<subject line>
+
+BODY:
+<email body>
+
+IMPORTANT:
+Do NOT use markdown.
+Do NOT use ** or headings.
+Return plain text only.
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You assist pharma teams with compliant communication."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.3,
     )
 
     return response.choices[0].message.content

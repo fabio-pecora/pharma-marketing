@@ -10,9 +10,18 @@ type Claim = {
 
 function extractText(html: string) {
   if (typeof window === "undefined") return html;
+
   const div = document.createElement("div");
   div.innerHTML = html;
-  return div.innerText;
+
+  let text = div.innerText;
+
+  // remove markdown stars
+  text = text.replace(/\*\*/g, "");
+  text = text.replace(/\*\*\*\*/g, "");
+  text = text.replace(/\*/g, "");
+
+  return text.trim();
 }
 
 export default function Page() {
@@ -30,8 +39,9 @@ export default function Page() {
   // VERSION HISTORY
   const [versions, setVersions] = useState<string[]>([]);
   const [currentVersion, setCurrentVersion] = useState(0);
+  const [validationError, setValidationError] = useState("");
 
-  const generated = versions[currentVersion] || "";
+  const generated = versions.length > 0 ? versions[currentVersion] : "";
 
   const [showRefine, setShowRefine] = useState(false);
   const [refineType, setRefineType] = useState("shorten");
@@ -49,9 +59,40 @@ export default function Page() {
       );
 
       const data = await res.json();
-      setClaims(data);
+
+      if (Array.isArray(data)) {
+        setClaims(data);
+      } else {
+        setClaims([]);
+      }
     } catch (error) {
       console.error("Failed to load claims:", error);
+      setClaims([]);
+    }
+  }
+
+  async function requestClaimEmail() {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/draft-claim-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          audience,
+          category,
+          therapeutic_area: therapeuticArea,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.email) {
+        setVersions([data.email]);
+        setCurrentVersion(0);
+      }
+    } catch (error) {
+      console.error("Failed to generate email:", error);
     }
   }
 
@@ -62,6 +103,7 @@ export default function Page() {
       setSelectedClaims([...selectedClaims, id]);
     }
   }
+
   async function generate() {
     if (selectedClaims.length === 0) {
       alert(
@@ -72,6 +114,7 @@ export default function Page() {
 
     try {
       setLoading(true);
+      setValidationError("");
 
       const res = await fetch("http://127.0.0.1:8000/generate-content", {
         method: "POST",
@@ -90,13 +133,33 @@ export default function Page() {
 
       const data = await res.json();
 
-      // start new version chain
-      setVersions([data.html]);
-      setCurrentVersion(0);
-      setShowRefine(false);
+      // VERY IMPORTANT: log backend response
+      console.log("Backend response:", data);
+
+      // HANDLE ERROR FROM BACKEND
+      if (data.error) {
+        console.error("Backend error:", data.error);
+        setValidationError(data.error);
+        setVersions([]);
+        return;
+      }
+
+      // HANDLE SUCCESS
+      if (data.html) {
+        setVersions([data.html]);
+        setCurrentVersion(0);
+        setShowRefine(false);
+        setValidationError("");
+      }
+
+      // IF NOTHING RETURNED
+      if (!data.html && !data.error) {
+        console.error("Unexpected response:", data);
+        alert("Unexpected backend response. Check console.");
+      }
     } catch (error) {
       console.error("Generation failed:", error);
-      alert("Generation failed. Check backend.");
+      alert("Generation failed. Check backend terminal.");
     } finally {
       setLoading(false);
     }
@@ -104,6 +167,7 @@ export default function Page() {
   async function refine() {
     try {
       setLoading(true);
+      setValidationError("");
 
       const textContent = extractText(generated);
 
@@ -116,10 +180,18 @@ export default function Page() {
           content: textContent,
           refine_type: refineType,
           instruction: customPrompt,
+          claim_ids: selectedClaims,
         }),
       });
 
       const data = await res.json();
+
+      if (data.error) {
+        setValidationError(data.error);
+        return;
+      }
+
+      setValidationError("");
 
       const newVersions = [...versions, data.html];
       setVersions(newVersions);
@@ -129,7 +201,7 @@ export default function Page() {
       setCustomPrompt("");
     } catch (error) {
       console.error("Refine failed:", error);
-      alert("Refine endpoint not implemented.");
+      alert("Refine failed. Check backend.");
     } finally {
       setLoading(false);
     }
@@ -334,8 +406,7 @@ Generated using compliant claim-based AI content generation.
             Retrieve Claims
           </button>
         </div>
-
-        {claims.length > 0 && (
+        {claims.length > 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Available Claims
@@ -362,6 +433,23 @@ Generated using compliant claim-based AI content generation.
                 </label>
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              No Claims Found
+            </h2>
+
+            <p className="text-gray-500 mb-4">
+              No claim generated / No claim match filters
+            </p>
+
+            <button
+              onClick={requestClaimEmail}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded-lg"
+            >
+              Draft Claim Request Email
+            </button>
           </div>
         )}
 
@@ -450,10 +538,12 @@ Generated using compliant claim-based AI content generation.
               onChange={(e) => updateCurrentVersion(e.target.value)}
               className="w-full border border-gray-300 rounded-lg p-4 text-black bg-white h-64"
             />
-
             <div className="flex gap-4 mt-4">
               <button
-                onClick={() => setShowRefine(true)}
+                onClick={() => {
+                  setValidationError("");
+                  setShowRefine(true);
+                }}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
               >
                 Modify Generated Content
@@ -467,6 +557,11 @@ Generated using compliant claim-based AI content generation.
               </button>
             </div>
 
+            {validationError && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-300 text-red-700 rounded-lg">
+                {validationError}
+              </div>
+            )}
             {showRefine && (
               <div className="mt-6 border-t pt-6 space-y-4">
                 <select

@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from models import ClaimSelectionRequest, RefineRequest
-from claims_service import get_recommended_claims
-from pipeline import generate_project_content, refine_generated_content
+from models import ClaimSelectionRequest, RefineRequest, ClaimRequestEmail
+from pipeline import generate_project_content, refine_generated_content, generate_claim_request_email
+from claims_service import get_recommended_claims, get_claims_by_ids
 
 app = FastAPI()
 
@@ -31,25 +31,54 @@ def recommended_claims(audience: str, category: str, therapeutic_area: str):
 @app.post("/generate-content")
 def generate_content(request: ClaimSelectionRequest):
 
-    result = generate_project_content(
-        request.content_type,
-        request.audience,
-        request.goal,
-        request.tone,
-        request.therapeutic_area,
-        request.claim_ids
-    )
+    try:
+        result = generate_project_content(
+            request.content_type,
+            request.audience,
+            request.goal,
+            request.tone,
+            request.therapeutic_area,
+            request.claim_ids
+        )
 
-    return result
+        return result
+
+    except ValueError as e:
+        return {
+            "error": str(e)
+        }
 
 
 @app.post("/refine-content")
 def refine_content(request: RefineRequest):
 
-    refined = refine_generated_content(
-        request.content,
-        request.refine_type,
-        request.instruction
+    claims = get_claims_by_ids(request.claim_ids)
+
+    try:
+        refined = refine_generated_content(
+            request.content,
+            request.refine_type,
+            request.instruction,
+            claims
+        )
+
+        return {
+            "html": refined
+        }
+
+    except ValueError as e:
+        return {
+            "error": str(e)
+        }
+
+
+@app.post("/draft-claim-request")
+def draft_claim_request(request: ClaimRequestEmail):
+
+    email = generate_claim_request_email(
+        request.audience,
+        request.category,
+        request.therapeutic_area
     )
 
-    return {"html": refined}
+    return {"email": email}

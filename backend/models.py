@@ -14,4 +14,11 @@ class ClaimSelectionRequest(BaseModel):
 class RefineRequest(BaseModel):
     content: str
     refine_type: str
-    instruction: str | None = None
+    instruction: str
+    claim_ids: List[int]
+
+
+class ClaimRequestEmail(BaseModel):
+    audience: str
+    category: str
+    therapeutic_area: str
