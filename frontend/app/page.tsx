@@ -108,10 +108,6 @@ export default function Page() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Backend endpoint missing");
-      }
-
       const data = await res.json();
 
       setGenerated(data.html);
@@ -120,18 +116,146 @@ export default function Page() {
       setCustomPrompt("");
     } catch (error) {
       console.error("Refine failed:", error);
-      alert(
-        "Refine endpoint not found. You need to implement /refine-content in the backend.",
-      );
+      alert("Refine endpoint not implemented.");
     } finally {
       setLoading(false);
     }
   }
+  function exportHTML() {
+    if (!generated) return;
+
+    let htmlContent = generated;
+
+    const looksLikeHTML =
+      htmlContent.includes("<p") ||
+      htmlContent.includes("<h") ||
+      htmlContent.includes("<div");
+
+    if (!looksLikeHTML) {
+      htmlContent = htmlContent
+        .replace(/SUBJECT:\s*(.*)/i, "<h2>$1</h2>")
+        .replace(/POST:/i, "<h3>Post</h3>")
+        .replace(/HASHTAGS:/i, "<h3>Hashtags</h3>")
+        .replace(/BODY:/i, "")
+        .split("\n")
+        .filter((line) => line.trim() !== "")
+        .map((line) => `<p>${line.trim()}</p>`)
+        .join("");
+    }
+
+    const fullHTML = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+  <meta charset="UTF-8">
+  <title>FRUZAQLA Marketing Content</title>
+
+  <style>
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background:#F3F4F6;
+    padding:40px;
+    margin:0;
+  }
+
+  .container {
+    max-width:640px;
+    margin:auto;
+    background:white;
+    border-radius:8px;
+    overflow:hidden;
+    box-shadow:0 4px 14px rgba(0,0,0,0.08);
+  }
+
+  .header {
+    background:#8C4799;
+    color:white;
+    padding:20px;
+    font-size:20px;
+    font-weight:600;
+  }
+
+  .content {
+    padding:32px;
+    color:#1F2937;
+    line-height:1.6;
+    font-size:16px;
+  }
+
+  h2 {
+    color:#002855;
+    margin-top:0;
+  }
+
+  h3 {
+    color:#002855;
+    margin-top:24px;
+  }
+
+  .divider {
+    height:4px;
+    background:#59C8E8;
+    width:80px;
+    margin:16px 0;
+  }
+
+  .footer {
+    background:#F9FAFB;
+    padding:20px;
+    font-size:12px;
+    color:#6B7280;
+  }
+
+  </style>
+
+  </head>
+
+  <body>
+
+  <div class="container">
+
+  <div class="header">
+  <style="height:100px; vertical-align:middle; margin-right:15px;" />
+  FRUZAQLA Marketing Content
+  </div>
+
+  <div class="content">
+
+  <div class="divider"></div>
+
+  ${htmlContent}
+
+  </div>
+
+  <div class="footer">
+  Generated using compliant claim-based AI content generation.
+  </div>
+
+  </div>
+
+  </body>
+  </html>
+  `;
+
+    const blob = new Blob([fullHTML], { type: "text/html" });
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${contentType}_content.html`;
+
+    document.body.appendChild(a);
+    a.click();
+
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* HEADER */}
-
       <div className="border-b bg-white">
         <div className="max-w-5xl mx-auto px-6 py-5 flex justify-between">
           <h1 className="text-xl font-semibold text-gray-900">
@@ -145,8 +269,6 @@ export default function Page() {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
-        {/* CLAIM RETRIEVAL */}
-
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">
             Claim Retrieval
@@ -157,62 +279,42 @@ export default function Page() {
           </p>
 
           <div className="grid grid-cols-3 gap-6">
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Audience
-              </label>
+            <select
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
+              className={selectStyle}
+            >
+              <option value="HCP">HCP</option>
+              <option value="Patient">Patient</option>
+            </select>
 
-              <select
-                value={audience}
-                onChange={(e) => setAudience(e.target.value)}
-                className={selectStyle}
-              >
-                <option value="HCP">HCP</option>
-                <option value="Patient">Patient</option>
-              </select>
-            </div>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className={selectStyle}
+            >
+              <option value="indication">Indication</option>
+              <option value="efficacy">Efficacy</option>
+              <option value="safety">Safety</option>
+              <option value="dosing">Dosing</option>
+            </select>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Category
-              </label>
-
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className={selectStyle}
-              >
-                <option value="indication">Indication</option>
-                <option value="efficacy">Efficacy</option>
-                <option value="safety">Safety</option>
-                <option value="dosing">Dosing</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Therapeutic Area
-              </label>
-
-              <select
-                value={therapeuticArea}
-                onChange={(e) => setTherapeuticArea(e.target.value)}
-                className={selectStyle}
-              >
-                <option value="Oncology">Oncology</option>
-              </select>
-            </div>
+            <select
+              value={therapeuticArea}
+              onChange={(e) => setTherapeuticArea(e.target.value)}
+              className={selectStyle}
+            >
+              <option value="Oncology">Oncology</option>
+            </select>
           </div>
 
           <button
             onClick={loadClaims}
-            className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition"
+            className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
           >
             Retrieve Claims
           </button>
         </div>
-
-        {/* CLAIM LIST */}
 
         {claims.length > 0 && (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
@@ -222,31 +324,27 @@ export default function Page() {
 
             <div className="space-y-3">
               {claims.map((claim) => (
-                <div
+                <label
                   key={claim.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+                  className="flex gap-3 border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
                 >
-                  <label className="flex gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedClaims.includes(claim.id)}
-                      onChange={() => toggleClaim(claim.id)}
-                    />
+                  <input
+                    type="checkbox"
+                    checked={selectedClaims.includes(claim.id)}
+                    onChange={() => toggleClaim(claim.id)}
+                  />
 
-                    <span className="text-gray-800 text-sm">
-                      {claim.claim_text}
-                      <span className="text-gray-500 ml-1">
-                        ({claim.citation})
-                      </span>
+                  <span className="text-gray-800 text-sm">
+                    {claim.claim_text}
+                    <span className="text-gray-500 ml-1">
+                      ({claim.citation})
                     </span>
-                  </label>
-                </div>
+                  </span>
+                </label>
               ))}
             </div>
           </div>
         )}
-
-        {/* GENERATION SETTINGS */}
 
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">
@@ -288,17 +386,11 @@ export default function Page() {
           <button
             disabled={selectedClaims.length === 0 || loading}
             onClick={generate}
-            className={`mt-6 px-5 py-2 rounded-lg font-medium text-white ${
-              selectedClaims.length === 0
-                ? "bg-gray-400"
-                : "bg-green-600 hover:bg-green-700"
-            }`}
+            className="mt-6 bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg"
           >
             {loading ? "Generating..." : "Generate Content"}
           </button>
         </div>
-
-        {/* GENERATED OUTPUT */}
 
         {generated && (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
@@ -312,19 +404,24 @@ export default function Page() {
               className="w-full border border-gray-300 rounded-lg p-4 text-black bg-white h-64"
             />
 
-            <button
-              onClick={() => setShowRefine(true)}
-              className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              Modify Generated Content
-            </button>
+            <div className="flex gap-4 mt-4">
+              <button
+                onClick={() => setShowRefine(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
+              >
+                Modify Generated Content
+              </button>
+
+              <button
+                onClick={exportHTML}
+                className="bg-gray-800 hover:bg-black text-white px-5 py-2 rounded-lg"
+              >
+                Export HTML
+              </button>
+            </div>
 
             {showRefine && (
               <div className="mt-6 border-t pt-6 space-y-4">
-                <label className="text-sm font-medium text-gray-700">
-                  Refine Content
-                </label>
-
                 <select
                   value={refineType}
                   onChange={(e) => setRefineType(e.target.value)}
@@ -339,7 +436,7 @@ export default function Page() {
                 </select>
 
                 <textarea
-                  placeholder="Optional custom instruction (max 300 characters)"
+                  placeholder="Optional custom instruction"
                   maxLength={300}
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
