@@ -55,7 +55,7 @@ export default function Page() {
   async function loadClaims() {
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/recommended-claims?audience=${audience}&category=${category}&therapeutic_area=${therapeuticArea}`,
+        `http://127.0.0.1:8000/recommended-claims?category=${category}&therapeutic_area=${therapeuticArea}`,
       );
 
       const data = await res.json();
@@ -369,22 +369,7 @@ Generated using compliant claim-based AI content generation.
             Select filters to retrieve compliant claims.
           </p>
 
-          <div className="grid grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Client
-              </label>
-
-              <select
-                value={audience}
-                onChange={(e) => setAudience(e.target.value)}
-                className={selectStyle}
-              >
-                <option value="HCP">HCP</option>
-                <option value="Patient">Patient</option>
-              </select>
-            </div>
-
+          <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Claim Category
@@ -401,7 +386,6 @@ Generated using compliant claim-based AI content generation.
                 <option value="dosing">Dosing</option>
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Therapeutic Area
@@ -476,7 +460,22 @@ Generated using compliant claim-based AI content generation.
             Content Generation
           </h2>
 
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-4 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Client
+              </label>
+
+              <select
+                value={audience}
+                onChange={(e) => setAudience(e.target.value)}
+                className={selectStyle}
+              >
+                <option value="HCP">HCP</option>
+                <option value="Patient">Patient</option>
+                <option value="CareGiver">CareGiver</option>
+              </select>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Content Type

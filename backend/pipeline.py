@@ -159,24 +159,29 @@ def refine_generated_content(content, refine_type, instruction, claims):
     prompt = f"""
 You are refining pharmaceutical marketing content.
 
-CLAIM RULES
+STRICT RULES
 
-All approved claims must remain exactly as written.
-You may NOT modify the wording of the claims.
+1. All approved claims MUST remain EXACTLY as written.
+2. Claims may NOT be modified, summarized, paraphrased, or shortened.
+3. Claims must appear in the refined content exactly as provided.
+4. You may ONLY modify the surrounding text.
 
-However, you may freely:
+REFINEMENT REQUIREMENT
 
-- rewrite surrounding text
-- change tone and wording
-- shorten or expand explanations
-- reorganize the structure
-- improve readability
+You MUST strictly follow the refinement request.
 
-Only the claim sentences must remain unchanged.
-Everything else may be rewritten.
+If the request includes a constraint (example: word limit, shorter content, etc),
+you MUST satisfy it ecactly. 
 
-APPROVED CLAIMS
+If the request cannot be satisfied because the approved claims themselves exceed
+the constraint, return ONLY the following message:
+
+ERROR: The refinement request cannot be satisfied because the approved claims exceed the required constraint.
+
+APPROVED CLAIMS (IMMUTABLE)
+---------------------------
 {claims_text}
+---------------------------
 
 REFINEMENT GOAL
 {refine_instruction}
@@ -184,26 +189,27 @@ REFINEMENT GOAL
 OPTIONAL USER INSTRUCTION
 {instruction}
 
-CONTENT
+CURRENT CONTENT
 {content}
 
 Return the FULL refined content.
 Do not add explanations.
+Do not add markdown.
+Return plain text only.
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You refine pharma marketing content."},
+            {"role": "system", "content": "You refine compliant pharmaceutical marketing content."},
             {"role": "user", "content": prompt},
         ],
-        temperature=0.4,
+        temperature=0.3,
     )
 
     refined_text = response.choices[0].message.content
 
-    compliance_passed = validate_claims(refined_text, claims)
-
+    # validate that claims were not changed
     validate_claims(refined_text, claims)
 
     return refined_text

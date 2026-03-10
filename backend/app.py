@@ -17,10 +17,9 @@ app.add_middleware(
 
 
 @app.get("/recommended-claims")
-def recommended_claims(audience: str, category: str, therapeutic_area: str):
+def recommended_claims(category: str, therapeutic_area: str):
 
     claims = get_recommended_claims(
-        audience,
         category,
         therapeutic_area
     )
@@ -82,3 +81,4 @@ def draft_claim_request(request: ClaimRequestEmail):
     )
 
     return {"email": email}
+
