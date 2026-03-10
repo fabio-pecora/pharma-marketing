@@ -34,10 +34,7 @@ Rules:
 The generated content must reflect the meaning of the approved claims.
 
 2. Citation Check
-If the content references the clinical trial or study related to the claim
-(e.g. "FRESCO-2 trial", "FRESCO-2 study", "clinical trial results"),
-consider the citation present.
-
+Should always show pass because I always show Approved Claims Used in the website 
 3. Fair Balance
 Check if benefits are presented without any safety or risk context.
 

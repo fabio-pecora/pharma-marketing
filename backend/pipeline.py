@@ -8,6 +8,9 @@ from compliance_service import validate_claims
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
+# ----------------------------------------------------
+# GENERATE INITIAL CONTENT
+# ----------------------------------------------------
 def generate_project_content(content_type, audience, goal, tone, therapeutic_area, claim_ids):
 
     project_id = create_project(content_type, audience, goal, tone, therapeutic_area)
@@ -18,9 +21,7 @@ def generate_project_content(content_type, audience, goal, tone, therapeutic_are
         [f"- {c['claim_text']} ({c['citation']})" for c in claims]
     )
 
-    # FORMAT RULES BASED ON CONTENT TYPE
     if content_type == "email":
-
         format_rules = """
 Generate ONLY an EMAIL.
 
@@ -31,12 +32,8 @@ SUBJECT:
 
 BODY:
 <email body>
-
-Do NOT generate social media or website content.
 """
-
     elif content_type == "social":
-
         format_rules = """
 Generate ONLY a SOCIAL MEDIA POST.
 
@@ -47,12 +44,8 @@ POST:
 
 HASHTAGS:
 <space separated hashtags>
-
-Do NOT generate email or website content.
 """
-
     elif content_type == "website":
-
         format_rules = """
 Generate ONLY WEBSITE COPY.
 
@@ -63,10 +56,7 @@ TITLE:
 
 BODY:
 <website copy>
-
-Do NOT generate email or social content.
 """
-
     else:
         format_rules = ""
 
@@ -79,7 +69,6 @@ You MUST only use the following APPROVED CLAIMS as factual sources.
 You may paraphrase them but you must NOT invent new medical claims.
 
 You may:
-
 - rephrase claims naturally
 - adapt language to the audience
 - adjust tone
@@ -87,7 +76,6 @@ You may:
 - expand explanations
 
 You may NOT:
-
 - invent new clinical results
 - introduce claims not listed below
 - contradict the approved claims
@@ -103,37 +91,26 @@ TONE: {tone}
 {format_rules}
 
 Return ONLY the requested format.
-Do not include markdown.
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You generate compliant pharma marketing content."},
-            {"role": "user", "content": prompt},
-        ],
         temperature=0.4,
+        messages=[
+            {"role": "system", "content": "You generate compliant pharmaceutical marketing content."},
+            {"role": "user", "content": prompt}
+        ]
     )
 
     generated_text = response.choices[0].message.content
 
-    try:
-        compliance_report = validate_claims(generated_text, claims)
-        compliance_passed = all(
-            v != "fail" for v in compliance_report.values()
-        )
+    compliance_report = validate_claims(generated_text, claims)
 
-    except ValueError as e:
-        return {
-            "error": str(e)
-        }
-
-    store_version(
-        project_id,
-        1,
-        generated_text,
-        compliance_passed
+    compliance_passed = all(
+        v["status"] != "fail" for v in compliance_report.values()
     )
+
+    store_version(project_id, 1, generated_text, compliance_passed)
 
     return {
         "html": generated_text,
@@ -144,11 +121,90 @@ Do not include markdown.
     }
 
 
+# ----------------------------------------------------
+# REFINEMENT POLICY GUARDRAIL (LLM)
+# ----------------------------------------------------
+def check_refinement_policy(instruction, refine_type):
+
+    prompt = f"""
+You enforce compliance rules for a pharmaceutical marketing AI system.
+
+USER INSTRUCTION:
+{instruction}
+
+REFINEMENT TYPE:
+{refine_type}
+
+Approved clinical claims MUST remain present.
+
+BLOCK instructions that:
+- remove claims
+- remove clinical study references
+- drastically shorten content so claims disappear
+- summarize to extreme brevity (e.g. "5 words")
+
+Respond ONLY:
+
+BLOCK
+or
+ALLOW
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0,
+        messages=[
+            {"role": "system", "content": "You enforce pharmaceutical compliance policies."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    decision = response.choices[0].message.content.strip().upper()
+
+    if "BLOCK" in decision:
+        raise ValueError(
+            "Refinement rejected: the instruction would remove approved clinical claims."
+        )
+
+
+# ----------------------------------------------------
+# CLAIM PRESERVATION CHECK (RULE SAFETY)
+# ----------------------------------------------------
+def validate_claim_preservation(refined_content, claims):
+
+    refined = refined_content.lower()
+
+    for claim in claims:
+
+        claim_text = claim["claim_text"].lower()
+
+        # extract anchor keywords
+        keywords = claim_text.split()[:6]
+
+        matches = sum(1 for k in keywords if k in refined)
+
+        # allow paraphrasing but ensure some anchors remain
+        if matches < max(2, len(keywords)//2):
+
+            raise ValueError(
+                f"Refinement removed or significantly altered an approved claim: '{claim['claim_text']}'. "
+                "Approved claims must remain represented in the content."
+            )
+
+    return True
+
+
+# ----------------------------------------------------
+# REFINE GENERATED CONTENT
+# ----------------------------------------------------
 def refine_generated_content(content, refine_type, instruction, claims):
 
+    # STEP 1: policy guardrail
+    check_refinement_policy(instruction, refine_type)
+
     refine_map = {
-        "shorten": "Shorten the content while preserving the claims.",
-        "expand": "Expand the explanation with more context.",
+        "shorten": "Shorten the content while preserving claims.",
+        "expand": "Expand the explanation.",
         "reorganize": "Reorganize the structure for clarity.",
         "emphasize": "Emphasize the key clinical claim.",
         "simplify": "Simplify the language.",
@@ -167,14 +223,15 @@ You are refining pharmaceutical marketing content.
 You MUST keep the content compliant with the approved claims.
 
 You may:
-
 - improve clarity
-- improve structure
 - simplify language
-- shorten or expand explanations
+- reorganize structure
+- shorten moderately
 
-You may NOT introduce new claims.
-You may NOT remove approved claims or their citations.
+You may NOT:
+- remove approved claims
+- remove clinical study references
+- introduce new claims
 
 APPROVED CLAIMS
 {claims_text}
@@ -182,115 +239,71 @@ APPROVED CLAIMS
 REFINEMENT GOAL
 {refine_instruction}
 
-OPTIONAL USER INSTRUCTION
+USER INSTRUCTION
 {instruction}
 
 CURRENT CONTENT
 {content}
 
-Return the FULL refined content.
-Do not add explanations.
-Return plain text only.
+Return ONLY the refined content.
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
+        temperature=0.3,
         messages=[
             {"role": "system", "content": "You refine compliant pharmaceutical marketing content."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.3,
+            {"role": "user", "content": prompt}
+        ]
     )
 
     refined_text = response.choices[0].message.content
 
-    try:
+    # STEP 2: ensure claims still exist
+    validate_claim_preservation(refined_text, claims)
 
-        validate_claim_preservation(content, refined_text, claims)
+    # STEP 3: compliance review
+    compliance_report = validate_claims(refined_text, claims)
 
-        compliance_report = validate_claims(refined_text, claims)
-
-        return {
-            "html": refined_text,
-            "compliance_report": compliance_report
-        }
-
-    except ValueError as e:
-
-        return {
-            "error": str(e)
-        }
+    return {
+        "html": refined_text,
+        "compliance_report": compliance_report
+    }
 
 
+# ----------------------------------------------------
+# CLAIM REQUEST EMAIL
+# ----------------------------------------------------
 def generate_claim_request_email(audience, category, therapeutic_area):
 
     prompt = f"""
 You are assisting a pharmaceutical marketing team.
 
-No approved claims were found in the claims library for the following request.
+No approved claims were found.
 
 Audience: {audience}
 Category: {category}
 Therapeutic Area: {therapeutic_area}
 
-Write a professional email requesting the Medical / Legal / Regulatory (MLR) team
-to review whether an approved claim exists or could be developed.
-
-The email should:
-
-- be professional
-- clearly explain the request
-- NOT suggest medical claims
-- simply request review or guidance
+Write a professional email requesting the MLR team to review whether
+an approved claim exists or could be developed.
 
 FORMAT
 
 SUBJECT:
-<subject line>
+<subject>
 
 BODY:
-<email body>
-
-IMPORTANT:
-Return plain text only.
-Do not use markdown.
+<email>
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
+        temperature=0.3,
         messages=[
             {"role": "system", "content": "You assist pharma teams with compliant communication."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.3,
+            {"role": "user", "content": prompt}
+        ]
     )
 
     return response.choices[0].message.content
-
-def validate_claim_preservation(original_content, refined_content, claims):
-
-    refined = refined_content.lower()
-
-    for claim in claims:
-
-        claim_text = claim["claim_text"].lower()
-
-        keywords = claim_text.split()[:6]
-
-        matches = sum(1 for k in keywords if k in refined)
-
-        if matches < max(2, len(keywords) // 2):
-            raise ValueError(
-                f"Refinement removed or altered an approved claim: '{claim['claim_text']}'. "
-                "Approved claims cannot be removed."
-            )
-
-        citation = claim["citation"].lower()
-
-        if citation not in refined:
-            raise ValueError(
-                f"Refinement removed required citation: '{claim['citation']}'. "
-                "Approved claims must retain their citations."
-            )
-
-    return True
