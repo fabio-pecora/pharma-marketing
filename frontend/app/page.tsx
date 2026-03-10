@@ -304,6 +304,21 @@ export default function Page() {
         </div>
       `;
     }
+    const metadataHTML = `
+      <div style="margin-top:40px;font-size:12px;color:#6b7280;">
+        <h3 style="color:#002855;">Content Metadata</h3>
+
+        <p><strong>Project ID:</strong> ${projectId ?? "N/A"}</p>
+        <p><strong>Audience:</strong> ${audience}</p>
+        <p><strong>Content Type:</strong> ${contentType}</p>
+        <p><strong>Marketing Goal:</strong> ${goal}</p>
+        <p><strong>Tone:</strong> ${tone}</p>
+        <p><strong>Therapeutic Area:</strong> ${therapeuticArea}</p>
+        <p><strong>Version:</strong> ${currentVersion + 1}</p>
+        <p><strong>Total Versions:</strong> ${versions.length}</p>
+        <p><strong>Export Timestamp:</strong> ${new Date().toISOString()}</p>
+      </div>
+      `;
 
     const fullHTML = `
   <!DOCTYPE html>
@@ -398,6 +413,8 @@ export default function Page() {
   ${htmlContent}
 
   ${claimsHTML}
+
+  ${metadataHTML}
 
   </div>
 
