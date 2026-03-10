@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 
 class ClaimSelectionRequest(BaseModel):
@@ -10,12 +10,13 @@ class ClaimSelectionRequest(BaseModel):
     therapeutic_area: str
     claim_ids: List[int]
 
+
 class RefineRequest(BaseModel):
-    project_id: int
+    project_id: Optional[int] = None
     content: str
-    refine_type: str
-    instruction: str
-    claim_ids: list[int]
+    refine_type: Optional[str] = ""
+    instruction: Optional[str] = ""
+    claim_ids: List[int] = []
 
 
 class ClaimRequestEmail(BaseModel):

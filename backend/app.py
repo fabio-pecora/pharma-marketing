@@ -51,16 +51,19 @@ def generate_content(request: ClaimSelectionRequest):
 @app.post("/refine-content")
 def refine_content(request: RefineRequest):
 
-    claims = get_claims_by_ids(request.claim_ids)
+    # If there are claim IDs, retrieve them
+    claims = []
+    if request.claim_ids:
+        claims = get_claims_by_ids(request.claim_ids)
 
     try:
         result = refine_generated_content(
-        request.project_id,
-        request.content,
-        request.refine_type,
-        request.instruction,
-        claims
-    )
+            request.project_id,
+            request.content,
+            request.refine_type,
+            request.instruction,
+            claims
+        )
 
         return result
 

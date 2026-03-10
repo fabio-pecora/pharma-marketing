@@ -202,16 +202,17 @@ def validate_claim_preservation(refined_content, claims):
 
 def refine_generated_content(project_id, content, refine_type, instruction, claims):
 
-    # STEP 1: policy guardrail
-    check_refinement_policy(instruction, refine_type)
+    # STEP 1: policy guardrail (only if claims exist)
+    if claims:
+        check_refinement_policy(instruction, refine_type)
 
     refine_map = {
-        "shorten": "Shorten the content while preserving claims.",
-        "expand": "Expand the explanation.",
-        "reorganize": "Reorganize the structure for clarity.",
-        "emphasize": "Emphasize the key clinical claim.",
-        "simplify": "Simplify the language.",
-        "readability": "Improve readability and flow."
+        "Shorten": "Shorten the content while preserving claims.",
+        "Expand": "Expand the explanation.",
+        "Reorganize": "Reorganize the structure for clarity.",
+        "Emphasize Claim": "Emphasize the key clinical claim.",
+        "Simplify": "Simplify the language.",
+        "Improve Readability": "Improve readability and flow."
     }
 
     refine_instruction = refine_map.get(refine_type, "")
@@ -220,35 +221,69 @@ def refine_generated_content(project_id, content, refine_type, instruction, clai
         [f"- {c['claim_text']} ({c['citation']})" for c in claims]
     )
 
-    prompt = f"""
-You are refining pharmaceutical marketing content.
+    if claims:
 
-You MUST keep the content compliant with the approved claims.
+        prompt = f"""
+    You are refining pharmaceutical marketing content.
 
-You may:
-- improve clarity
-- simplify language
-- reorganize structure
-- shorten moderately
+    You MUST keep the content compliant with the approved claims.
 
-You may NOT:
-- remove approved claims
-- remove clinical study references
-- introduce new claims
+    You may:
+    - improve clarity
+    - simplify language
+    - reorganize structure
+    - shorten moderately
 
-APPROVED CLAIMS
-{claims_text}
+    You may NOT:
+    - remove approved claims
+    - remove clinical study references
+    - introduce new claims
 
-REFINEMENT GOAL
-{refine_instruction}
+    APPROVED CLAIMS
+    {claims_text}
 
-USER INSTRUCTION
+    REFINEMENT GOAL
+    {refine_instruction}
+
+    USER INSTRUCTION
+    {instruction}
+
+    CURRENT CONTENT
+    {content}
+
+    Return ONLY the refined content.
+    """
+
+    else:
+
+        prompt = f"""
+You are drafting an internal email to the MLR team requesting review or development of an approved claim.
+
+This is NOT marketing content. It is a professional internal request.
+
+IMPORTANT
+The user instruction below MUST be incorporated explicitly into the email.
+
+If the user references a specific claim, medication, risk, or identifier,
+you MUST clearly mention it in the body of the email.
+
+USER REQUEST
 {instruction}
 
-CURRENT CONTENT
+CURRENT EMAIL
 {content}
 
-Return ONLY the refined content.
+Rewrite the email while preserving the professional tone.
+
+The request described by the user must appear clearly in the email.
+
+Return ONLY the email in this format:
+
+SUBJECT:
+<subject>
+
+BODY:
+<body>
 """
 
     response = client.chat.completions.create(
@@ -262,37 +297,39 @@ Return ONLY the refined content.
 
     refined_text = response.choices[0].message.content
 
-    # STEP 2: ensure claims still exist
-    validate_claim_preservation(refined_text, claims)
+    # STEP 2: ensure claims still exist (only if claims exist)
+    if claims:
+        validate_claim_preservation(refined_text, claims)
 
-    # STEP 3: compliance review
-    compliance_report = validate_claims(refined_text, claims)
+    # STEP 3: compliance review (only if claims exist)
+    compliance_report = None
+    if claims:
+        compliance_report = validate_claims(refined_text, claims)
 
-    # STEP 4: STORE NEW VERSION
-    from database import get_connection
+    # STEP 4: STORE NEW VERSION ONLY IF PROJECT EXISTS
+    if project_id:
 
-    conn = get_connection()
-    cur = conn.cursor()
+        conn = get_connection()
+        cur = conn.cursor()
 
-    cur.execute("""
-    SELECT MAX(version_number)
-    FROM content_versions
-    WHERE project_id = %s
-    """, (project_id,))
+        cur.execute("""
+        SELECT MAX(version_number)
+        FROM content_versions
+        WHERE project_id = %s
+        """, (project_id,))
 
-    last_version = cur.fetchone()[0] or 1
-    new_version = last_version + 1
+        last_version = cur.fetchone()[0] or 1
+        new_version = last_version + 1
 
-    cur.close()
-    conn.close()
+        cur.close()
+        conn.close()
 
-    store_version(project_id, new_version, refined_text, True)
+        store_version(project_id, new_version, refined_text, True)
 
     return {
         "html": refined_text,
         "compliance_report": compliance_report
     }
-
 
 # ----------------------------------------------------
 # CLAIM REQUEST EMAIL

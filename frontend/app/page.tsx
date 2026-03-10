@@ -53,10 +53,18 @@ export default function Page() {
   const [claimsUsed, setClaimsUsed] = useState<Claim[]>([]);
   const [complianceReport, setComplianceReport] = useState<any>(null);
 
+  const [retrievalAttempted, setRetrievalAttempted] = useState(false);
+  const [isClaimRequest, setIsClaimRequest] = useState(false);
+
   const selectStyle =
     "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
   async function loadClaims() {
+    setRetrievalAttempted(true);
+    if (category === "request_claim") {
+      setClaims([]);
+      return;
+    }
     try {
       const res = await fetch(
         `http://127.0.0.1:8000/recommended-claims?category=${category}&therapeutic_area=${therapeuticArea}`,
@@ -193,11 +201,11 @@ export default function Page() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-        project_id: projectId,
-        content: textContent,
-        refine_type: refineOptions.join(", "),
-        instruction: customPrompt,
-        claim_ids: selectedClaims,
+          project_id: projectId || null,
+          content: textContent,
+          refine_type: refineOptions.join(", "),
+          instruction: customPrompt,
+          claim_ids: projectId ? selectedClaims : [],
         }),
       });
 
@@ -217,7 +225,6 @@ export default function Page() {
       if (data.compliance_report) {
         setComplianceReport(data.compliance_report);
       }
-      setCurrentVersion(newVersions.length - 1);
 
       setShowRefine(false);
       setCustomPrompt("");
@@ -483,6 +490,7 @@ export default function Page() {
                 <option value="efficacy">Efficacy</option>
                 <option value="safety">Safety</option>
                 <option value="dosing">Dosing</option>
+                <option value="request_claim">Request New Claim</option>
               </select>
             </div>
             <div>
@@ -507,7 +515,18 @@ export default function Page() {
             Retrieve Claims
           </button>
         </div>
-        {claims.length > 0 ? (
+        {!retrievalAttempted ? (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Claims Library
+            </h2>
+
+            <p className="text-gray-500">
+              Approved claims will appear here after you retrieve them using the
+              selected filters.
+            </p>
+          </div>
+        ) : claims.length > 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Available Claims
@@ -538,18 +557,20 @@ export default function Page() {
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">
-              No Claims Found
+              No Approved Claims Found
             </h2>
 
             <p className="text-gray-500 mb-4">
-              No claim generated / No claim match filters
+              No approved claims match the selected filters. If you require a
+              new claim, you can submit a request to the Medical, Legal, and
+              Regulatory team.
             </p>
 
             <button
               onClick={requestClaimEmail}
               className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded-lg"
             >
-              Draft Claim Request Email
+              Request New Approved Claim
             </button>
           </div>
         )}
@@ -706,7 +727,7 @@ export default function Page() {
                 }}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
               >
-                Modify Generated Content
+                {isClaimRequest ? "Improve Email" : "Modify Generated Content"}
               </button>
 
               <button
