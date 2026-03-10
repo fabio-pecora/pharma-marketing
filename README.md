@@ -52,8 +52,8 @@ Main capabilities:
                 └─────────────┬─────────────┘
                               │
                               │
-         ┌────────────────────┼────────────────────┐
-         ▼                    ▼                    ▼
+            ┌─────────────────┼────────────────────┐
+            ▼                 ▼                    ▼
 
  ┌───────────────┐   ┌──────────────────┐   ┌─────────────────┐
  │ PostgreSQL DB │   │   LLM Pipeline   │   │ Compliance Layer│
@@ -369,4 +369,5 @@ Potential extensions include:
 - real-time collaborative editing
 - user authentication and permissions
 - full compliance audit trail
+
 
