@@ -118,9 +118,10 @@ Do not include markdown.
     generated_text = response.choices[0].message.content
 
     try:
-        # validate content references approved claims
-        validate_claims(generated_text, claims)
-        compliance_passed = True
+        compliance_report = validate_claims(generated_text, claims)
+        compliance_passed = all(
+            v != "fail" for v in compliance_report.values()
+        )
 
     except ValueError as e:
         return {
@@ -137,6 +138,7 @@ Do not include markdown.
     return {
         "html": generated_text,
         "compliance_passed": compliance_passed,
+        "compliance_report": compliance_report,
         "project_id": project_id,
         "claims_used": claims
     }

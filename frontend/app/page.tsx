@@ -50,6 +50,7 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
 
   const [claimsUsed, setClaimsUsed] = useState<Claim[]>([]);
+  const [complianceReport, setComplianceReport] = useState<any>(null);
 
   const selectStyle =
     "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -117,6 +118,7 @@ export default function Page() {
     try {
       setLoading(true);
       setValidationError("");
+      setComplianceReport(null);
 
       const res = await fetch("http://127.0.0.1:8000/generate-content", {
         method: "POST",
@@ -155,6 +157,10 @@ export default function Page() {
 
         if (data.claims_used) {
           setClaimsUsed(data.claims_used);
+        }
+
+        if (data.compliance_report) {
+          setComplianceReport(data.compliance_report);
         }
       }
 
@@ -211,6 +217,20 @@ export default function Page() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function getStatusColor(status: string) {
+    if (status === "pass") return "text-green-800";
+    if (status === "warning") return "text-amber-800";
+    if (status === "fail") return "text-red-800";
+    return "text-gray-800";
+  }
+
+  function getStatusBackground(status: string) {
+    if (status === "pass") return "bg-green-50 border-green-300";
+    if (status === "warning") return "bg-amber-50 border-amber-300";
+    if (status === "fail") return "bg-red-50 border-red-300";
+    return "bg-gray-50 border-gray-300";
   }
 
   function updateCurrentVersion(value: string) {
@@ -662,6 +682,68 @@ export default function Page() {
                 Export HTML
               </button>
             </div>
+
+            {/* COMPLIANCE REPORT */}
+
+            {complianceReport && (
+              <div className="mt-6 border-t pt-6 text-black">
+                <h3 className="text-md font-semibold text-black mb-3">
+                  Compliance Check
+                </h3>
+
+                <div className="space-y-2 text-sm">
+                  <div
+                    className={`flex justify-between border p-2 rounded ${getStatusBackground(complianceReport.claim_integrity)}`}
+                  >
+                    <span className="font-medium">Claim Integrity</span>
+                    <span
+                      className={getStatusColor(
+                        complianceReport.claim_integrity,
+                      )}
+                    >
+                      {complianceReport.claim_integrity}
+                    </span>
+                  </div>
+
+                  <div
+                    className={`flex justify-between border p-2 rounded ${getStatusBackground(complianceReport.citation_check)}`}
+                  >
+                    <span className="font-medium">Citation Check</span>
+                    <span
+                      className={getStatusColor(
+                        complianceReport.citation_check,
+                      )}
+                    >
+                      {complianceReport.citation_check}
+                    </span>
+                  </div>
+
+                  <div
+                    className={`flex justify-between border p-2 rounded ${getStatusBackground(complianceReport.fair_balance)}`}
+                  >
+                    <span className="font-medium">Fair Balance</span>
+                    <span
+                      className={getStatusColor(complianceReport.fair_balance)}
+                    >
+                      {complianceReport.fair_balance}
+                    </span>
+                  </div>
+
+                  <div
+                    className={`flex justify-between border p-2 rounded ${getStatusBackground(complianceReport.off_label_risk)}`}
+                  >
+                    <span className="font-medium">Off Label Risk</span>
+                    <span
+                      className={getStatusColor(
+                        complianceReport.off_label_risk,
+                      )}
+                    >
+                      {complianceReport.off_label_risk}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {validationError && (
               <div className="mt-4 p-3 bg-red-50 border border-red-300 text-red-700 rounded-lg">
