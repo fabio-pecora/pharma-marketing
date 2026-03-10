@@ -251,7 +251,7 @@ export default function Page() {
           ${claimsUsed
             .map(
               (claim) => `
-              <div style="border:1px solid #e5e7eb;padding:12px;margin-top:10px;border-radius:6px;background:#f9fafb;">
+              <div style="background:#F7F2F8;border-left:4px solid #8C4799;padding:16px;margin-top:12px;border-radius:6px;">
                 <div style="font-size:14px;color:#1f2937;">
                   ${claim.claim_text}
                 </div>
@@ -279,7 +279,7 @@ export default function Page() {
 
   body {
   font-family: Arial, Helvetica, sans-serif;
-  background:#F3F4F6;
+  background:#F5F6F8;
   padding:40px;
   margin:0;
   }
@@ -293,19 +293,24 @@ export default function Page() {
   box-shadow:0 4px 14px rgba(0,0,0,0.08);
   }
 
-  .header {
-  background:#8C4799;
-  color:white;
-  padding:20px;
-  font-size:20px;
-  font-weight:600;
-  }
+
 
   .content {
   padding:32px;
   color:#1F2937;
   line-height:1.6;
   font-size:16px;
+  }
+
+  .logo-area{
+  padding:22px 28px;
+  background:white;
+  border-bottom:1px solid #eee;
+  }
+
+  .brand-bar{
+  height:6px;
+  background:#8C4799;
   }
 
   h2 {
@@ -320,7 +325,7 @@ export default function Page() {
 
   .divider {
   height:4px;
-  background:#59C8E8;
+  background:#8C4799;
   width:80px;
   margin:16px 0;
   }
@@ -340,9 +345,14 @@ export default function Page() {
 
   <div class="container">
 
-  <div class="header">
-  FRUZAQLA Marketing Content
+  <div class="logo-area">
+  <img 
+  src="https://assets-dam.takeda.com/image/upload/v1760391521/Oncology/Medicines/FRUZAQLA_Logo_PNG.png"
+  style="height:60px"
+  />
   </div>
+
+<div class="brand-bar"></div>
 
   <div class="content">
 
@@ -385,7 +395,7 @@ export default function Page() {
       <div className="border-b bg-white">
         <div className="max-w-5xl mx-auto px-6 py-5 flex justify-between">
           <h1 className="text-xl font-semibold text-gray-900">
-            Pharma Marketing Content Generator
+            FRUZAQLA Marketing Content Generator
           </h1>
 
           <span className="text-sm text-gray-500">
