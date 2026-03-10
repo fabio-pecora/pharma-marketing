@@ -15,7 +15,7 @@ def generate_project_content(content_type, audience, goal, tone, therapeutic_are
     claims = get_claims_by_ids(claim_ids)
 
     claims_text = "\n".join(
-        [f"{c['claim_text']} ({c['citation']})" for c in claims]
+        [f"- {c['claim_text']} ({c['citation']})" for c in claims]
     )
 
     # FORMAT RULES BASED ON CONTENT TYPE
@@ -71,26 +71,26 @@ Do NOT generate email or social content.
         format_rules = ""
 
     prompt = f"""
-You are generating pharmaceutical marketing content using approved claims.
+You are generating pharmaceutical marketing content.
 
-CLAIM RULES
+IMPORTANT COMPLIANCE RULES
 
-All approved claims MUST appear exactly as written.
-Do NOT modify the wording of the claims.
-Do NOT remove the claims.
+You MUST only use the following APPROVED CLAIMS as factual sources.
+You may paraphrase them but you must NOT invent new medical claims.
 
-Outside of the claims, you are free to:
+You may:
 
-- rewrite the surrounding content
-- change tone and style
-- reorganize sections
-- expand or shorten explanations
-- add neutral contextual information
+- rephrase claims naturally
+- adapt language to the audience
+- adjust tone
+- reorganize the content
+- expand explanations
 
-You may place the claims anywhere in the content.
+You may NOT:
 
-IMPORTANT:
-The claims must appear EXACTLY as written, but the rest of the text can be written freely.
+- invent new clinical results
+- introduce claims not listed below
+- contradict the approved claims
 
 APPROVED CLAIMS
 {claims_text}
@@ -103,6 +103,7 @@ TONE: {tone}
 {format_rules}
 
 Return ONLY the requested format.
+Do not include markdown.
 """
 
     response = client.chat.completions.create(
@@ -117,13 +118,14 @@ Return ONLY the requested format.
     generated_text = response.choices[0].message.content
 
     try:
+        # validate content references approved claims
         validate_claims(generated_text, claims)
         compliance_passed = True
 
     except ValueError as e:
-            return {
-                "error": str(e)
-            }
+        return {
+            "error": str(e)
+        }
 
     store_version(
         project_id,
@@ -135,7 +137,8 @@ Return ONLY the requested format.
     return {
         "html": generated_text,
         "compliance_passed": compliance_passed,
-        "project_id": project_id
+        "project_id": project_id,
+        "claims_used": claims
     }
 
 
@@ -153,35 +156,25 @@ def refine_generated_content(content, refine_type, instruction, claims):
     refine_instruction = refine_map.get(refine_type, "")
 
     claims_text = "\n".join(
-        [f"{c['claim_text']} ({c['citation']})" for c in claims]
+        [f"- {c['claim_text']} ({c['citation']})" for c in claims]
     )
 
     prompt = f"""
 You are refining pharmaceutical marketing content.
 
-STRICT RULES
+You MUST keep the content compliant with the approved claims.
 
-1. All approved claims MUST remain EXACTLY as written.
-2. Claims may NOT be modified, summarized, paraphrased, or shortened.
-3. Claims must appear in the refined content exactly as provided.
-4. You may ONLY modify the surrounding text.
+You may:
 
-REFINEMENT REQUIREMENT
+- improve clarity
+- improve structure
+- simplify language
+- shorten or expand explanations
 
-You MUST strictly follow the refinement request.
+You may NOT introduce new claims.
 
-If the request includes a constraint (example: word limit, shorter content, etc),
-you MUST satisfy it ecactly. 
-
-If the request cannot be satisfied because the approved claims themselves exceed
-the constraint, return ONLY the following message:
-
-ERROR: The refinement request cannot be satisfied because the approved claims exceed the required constraint.
-
-APPROVED CLAIMS (IMMUTABLE)
----------------------------
+APPROVED CLAIMS
 {claims_text}
----------------------------
 
 REFINEMENT GOAL
 {refine_instruction}
@@ -194,7 +187,6 @@ CURRENT CONTENT
 
 Return the FULL refined content.
 Do not add explanations.
-Do not add markdown.
 Return plain text only.
 """
 
@@ -209,10 +201,10 @@ Return plain text only.
 
     refined_text = response.choices[0].message.content
 
-    # validate that claims were not changed
     validate_claims(refined_text, claims)
 
     return refined_text
+
 
 def generate_claim_request_email(audience, category, therapeutic_area):
 
@@ -244,9 +236,8 @@ BODY:
 <email body>
 
 IMPORTANT:
-Do NOT use markdown.
-Do NOT use ** or headings.
 Return plain text only.
+Do not use markdown.
 """
 
     response = client.chat.completions.create(

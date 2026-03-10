@@ -49,6 +49,8 @@ export default function Page() {
 
   const [loading, setLoading] = useState(false);
 
+  const [claimsUsed, setClaimsUsed] = useState<Claim[]>([]);
+
   const selectStyle =
     "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
@@ -150,6 +152,10 @@ export default function Page() {
         setCurrentVersion(0);
         setShowRefine(false);
         setValidationError("");
+
+        if (data.claims_used) {
+          setClaimsUsed(data.claims_used);
+        }
       }
 
       // IF NOTHING RETURNED
@@ -235,99 +241,128 @@ export default function Page() {
         .join("");
     }
 
+    let claimsHTML = "";
+
+    if (claimsUsed.length > 0) {
+      claimsHTML = `
+        <div style="margin-top:40px;">
+          <h3 style="color:#002855;">Approved Claims Used</h3>
+
+          ${claimsUsed
+            .map(
+              (claim) => `
+              <div style="border:1px solid #e5e7eb;padding:12px;margin-top:10px;border-radius:6px;background:#f9fafb;">
+                <div style="font-size:14px;color:#1f2937;">
+                  ${claim.claim_text}
+                </div>
+
+                <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+                  Citation: ${claim.citation}
+                </div>
+              </div>
+            `,
+            )
+            .join("")}
+
+        </div>
+      `;
+    }
+
     const fullHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>FRUZAQLA Marketing Content</title>
+  <!DOCTYPE html>
+  <html>
+  <head>
+  <meta charset="UTF-8">
+  <title>FRUZAQLA Marketing Content</title>
 
-<style>
+  <style>
 
-body {
-font-family: Arial, Helvetica, sans-serif;
-background:#F3F4F6;
-padding:40px;
-margin:0;
-}
+  body {
+  font-family: Arial, Helvetica, sans-serif;
+  background:#F3F4F6;
+  padding:40px;
+  margin:0;
+  }
 
-.container {
-max-width:640px;
-margin:auto;
-background:white;
-border-radius:8px;
-overflow:hidden;
-box-shadow:0 4px 14px rgba(0,0,0,0.08);
-}
+  .container {
+  max-width:640px;
+  margin:auto;
+  background:white;
+  border-radius:8px;
+  overflow:hidden;
+  box-shadow:0 4px 14px rgba(0,0,0,0.08);
+  }
 
-.header {
-background:#8C4799;
-color:white;
-padding:20px;
-font-size:20px;
-font-weight:600;
-}
+  .header {
+  background:#8C4799;
+  color:white;
+  padding:20px;
+  font-size:20px;
+  font-weight:600;
+  }
 
-.content {
-padding:32px;
-color:#1F2937;
-line-height:1.6;
-font-size:16px;
-}
+  .content {
+  padding:32px;
+  color:#1F2937;
+  line-height:1.6;
+  font-size:16px;
+  }
 
-h2 {
-color:#002855;
-margin-top:0;
-}
+  h2 {
+  color:#002855;
+  margin-top:0;
+  }
 
-h3 {
-color:#002855;
-margin-top:24px;
-}
+  h3 {
+  color:#002855;
+  margin-top:24px;
+  }
 
-.divider {
-height:4px;
-background:#59C8E8;
-width:80px;
-margin:16px 0;
-}
+  .divider {
+  height:4px;
+  background:#59C8E8;
+  width:80px;
+  margin:16px 0;
+  }
 
-.footer {
-background:#F9FAFB;
-padding:20px;
-font-size:12px;
-color:#6B7280;
-}
+  .footer {
+  background:#F9FAFB;
+  padding:20px;
+  font-size:12px;
+  color:#6B7280;
+  }
 
-</style>
+  </style>
 
-</head>
+  </head>
 
-<body>
+  <body>
 
-<div class="container">
+  <div class="container">
 
-<div class="header">
-FRUZAQLA Marketing Content
-</div>
+  <div class="header">
+  FRUZAQLA Marketing Content
+  </div>
 
-<div class="content">
+  <div class="content">
 
-<div class="divider"></div>
+  <div class="divider"></div>
 
-${htmlContent}
+  ${htmlContent}
 
-</div>
+  ${claimsHTML}
 
-<div class="footer">
-Generated using compliant claim-based AI content generation.
-</div>
+  </div>
 
-</div>
+  <div class="footer">
+  Generated using compliant claim-based AI content generation.
+  </div>
 
-</body>
-</html>
-`;
+  </div>
+
+  </body>
+  </html>
+  `;
 
     const blob = new Blob([fullHTML], { type: "text/html" });
 
@@ -573,6 +608,32 @@ Generated using compliant claim-based AI content generation.
               onChange={(e) => updateCurrentVersion(e.target.value)}
               className="w-full border border-gray-300 rounded-lg p-4 text-black bg-white h-64"
             />
+
+            {/* APPROVED CLAIMS USED */}
+            {claimsUsed.length > 0 && (
+              <div className="mt-6 border-t pt-6">
+                <h3 className="text-md font-semibold text-gray-900 mb-3">
+                  Approved Claims Used
+                </h3>
+
+                <div className="space-y-3">
+                  {claimsUsed.map((claim) => (
+                    <div
+                      key={claim.id}
+                      className="border border-gray-200 rounded-lg p-3 bg-gray-50"
+                    >
+                      <div className="text-sm text-gray-800">
+                        {claim.claim_text}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Citation: {claim.citation}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-4 mt-4">
               <button
                 onClick={() => {
@@ -597,6 +658,7 @@ Generated using compliant claim-based AI content generation.
                 {validationError}
               </div>
             )}
+
             {showRefine && (
               <div className="mt-6 border-t pt-6 space-y-4">
                 <select
