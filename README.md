@@ -180,48 +180,48 @@ This structure allows the system to maintain a full history of how content evolv
 
 The system uses three core entities to support claim retrieval, content generation, and version tracking.
 
-+-----------------+
-|     CLAIMS      |
-+-----------------+
-| id              |
-| claim_text      |
-| citation        |
-| category        |
-| therapeutic_area|
-+-----------------+
-        |
-        | used during generation
-        |
-        ▼
-
-+-----------------+
-|    PROJECTS     |
-+-----------------+
-| id              |
-| content_type    |
-| audience        |
-| goal            |
-| tone            |
-| therapeutic_area|
-| created_at      |
-+-----------------+
-        |
-        | 1 project
-        | can generate
-        | multiple versions
-        ▼
-
-+----------------------+
-|   CONTENT_VERSIONS   |
-+----------------------+
-| id                   |
-| project_id (FK)      |
-| version_number       |
-| content_text         |
-| created_at           |
-+----------------------+
-
----
+        +-----------------+
+        |     CLAIMS      |
+        +-----------------+
+        | id              |
+        | claim_text      |
+        | citation        |
+        | category        |
+        | therapeutic_area|
+        +-----------------+
+                |
+                | used during generation
+                |
+                ▼
+        
+        +-----------------+
+        |    PROJECTS     |
+        +-----------------+
+        | id              |
+        | content_type    |
+        | audience        |
+        | goal            |
+        | tone            |
+        | therapeutic_area|
+        | created_at      |
+        +-----------------+
+                |
+                | 1 project
+                | can generate
+                | multiple versions
+                ▼
+        
+        +----------------------+
+        |   CONTENT_VERSIONS   |
+        +----------------------+
+        | id                   |
+        | project_id (FK)      |
+        | version_number       |
+        | content_text         |
+        | created_at           |
+        +----------------------+
+        
+        ---
 
 # Content Generation Pipeline
 
@@ -229,28 +229,28 @@ The system generates marketing content using a controlled AI pipeline.
 
 Workflow:
 
-User selects approved claims  
-        │
-        ▼
-Claims retrieved from database  
-        │
-        ▼
-Extra Selection of content from User
-        │
-        ▼
-Prompt constructed with approved claims  
-        │
-        ▼
-LLM generates marketing content  
-        │
-        ▼
-Compliance validation pipeline  
-        │
-        ▼
-Content stored as a new version  
-        │
-        ▼
-User can refine or export content
+    User selects approved claims  
+            │
+            ▼
+    Claims retrieved from database  
+            │
+            ▼
+    Extra Selection of content from User
+            │
+            ▼
+    Prompt constructed with approved claims  
+            │
+            ▼
+    LLM generates marketing content  
+            │
+            ▼
+    Compliance validation pipeline  
+            │
+            ▼
+    Content stored as a new version  
+            │
+            ▼
+    User can refine or export content
 
 ---
 
@@ -368,6 +368,7 @@ Potential extensions include:
 - real-time collaborative editing
 - user authentication and permissions
 - full compliance audit trail
+
 
 
 
