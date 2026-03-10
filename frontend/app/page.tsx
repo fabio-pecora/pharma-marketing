@@ -44,7 +44,7 @@ export default function Page() {
   const generated = versions.length > 0 ? versions[currentVersion] : "";
 
   const [showRefine, setShowRefine] = useState(false);
-  const [refineType, setRefineType] = useState("shorten");
+  const [refineOptions, setRefineOptions] = useState<string[]>([]);
   const [customPrompt, setCustomPrompt] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -190,7 +190,7 @@ export default function Page() {
         },
         body: JSON.stringify({
           content: textContent,
-          refine_type: refineType,
+          refine_type: refineOptions.join(", "),
           instruction: customPrompt,
           claim_ids: selectedClaims,
         }),
@@ -207,6 +207,11 @@ export default function Page() {
 
       const newVersions = [...versions, data.html];
       setVersions(newVersions);
+      setCurrentVersion(newVersions.length - 1);
+
+      if (data.compliance_report) {
+        setComplianceReport(data.compliance_report);
+      }
       setCurrentVersion(newVersions.length - 1);
 
       setShowRefine(false);
@@ -231,6 +236,13 @@ export default function Page() {
     if (status === "warning") return "bg-amber-50 border-amber-300";
     if (status === "fail") return "bg-red-50 border-red-300";
     return "bg-gray-50 border-gray-300";
+  }
+  function toggleRefine(option: string) {
+    if (refineOptions.includes(option)) {
+      setRefineOptions(refineOptions.filter((o) => o !== option));
+    } else {
+      setRefineOptions([...refineOptions, option]);
+    }
   }
 
   function updateCurrentVersion(value: string) {
@@ -683,67 +695,7 @@ export default function Page() {
               </button>
             </div>
 
-            {/* COMPLIANCE REPORT */}
-
-            {complianceReport && (
-              <div className="mt-6 border-t pt-6 text-black">
-                <h3 className="text-md font-semibold text-black mb-3">
-                  Compliance Check
-                </h3>
-
-                <div className="space-y-2 text-sm">
-                  <div
-                    className={`flex justify-between border p-2 rounded ${getStatusBackground(complianceReport.claim_integrity)}`}
-                  >
-                    <span className="font-medium">Claim Integrity</span>
-                    <span
-                      className={getStatusColor(
-                        complianceReport.claim_integrity,
-                      )}
-                    >
-                      {complianceReport.claim_integrity}
-                    </span>
-                  </div>
-
-                  <div
-                    className={`flex justify-between border p-2 rounded ${getStatusBackground(complianceReport.citation_check)}`}
-                  >
-                    <span className="font-medium">Citation Check</span>
-                    <span
-                      className={getStatusColor(
-                        complianceReport.citation_check,
-                      )}
-                    >
-                      {complianceReport.citation_check}
-                    </span>
-                  </div>
-
-                  <div
-                    className={`flex justify-between border p-2 rounded ${getStatusBackground(complianceReport.fair_balance)}`}
-                  >
-                    <span className="font-medium">Fair Balance</span>
-                    <span
-                      className={getStatusColor(complianceReport.fair_balance)}
-                    >
-                      {complianceReport.fair_balance}
-                    </span>
-                  </div>
-
-                  <div
-                    className={`flex justify-between border p-2 rounded ${getStatusBackground(complianceReport.off_label_risk)}`}
-                  >
-                    <span className="font-medium">Off Label Risk</span>
-                    <span
-                      className={getStatusColor(
-                        complianceReport.off_label_risk,
-                      )}
-                    >
-                      {complianceReport.off_label_risk}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* ERROR MESSAGE */}
 
             {validationError && (
               <div className="mt-4 p-3 bg-red-50 border border-red-300 text-red-700 rounded-lg">
@@ -751,20 +703,34 @@ export default function Page() {
               </div>
             )}
 
+            {/* REFINE UI (NOW ABOVE COMPLIANCE CHECK) */}
+
             {showRefine && (
               <div className="mt-6 border-t pt-6 space-y-4">
-                <select
-                  value={refineType}
-                  onChange={(e) => setRefineType(e.target.value)}
-                  className={selectStyle}
-                >
-                  <option value="shorten">Shorten Content</option>
-                  <option value="expand">Expand Explanation</option>
-                  <option value="reorganize">Reorganize Sections</option>
-                  <option value="emphasize">Emphasize Key Claim</option>
-                  <option value="simplify">Simplify Language</option>
-                  <option value="readability">Improve Readability</option>
-                </select>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "Shorten",
+                    "Expand",
+                    "Reorganize",
+                    "Emphasize Claim",
+                    "Simplify",
+                    "Improve Readability",
+                  ].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => toggleRefine(option)}
+                      className={`px-3 py-1 rounded-lg border text-sm
+                        ${
+                          refineOptions.includes(option)
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                        }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
 
                 <textarea
                   placeholder="Optional custom instruction"
@@ -780,6 +746,116 @@ export default function Page() {
                 >
                   Apply Refinement
                 </button>
+              </div>
+            )}
+
+            {/* COMPLIANCE REPORT */}
+
+            {complianceReport && (
+              <div className="mt-6 border-t pt-6 text-black">
+                <h3 className="text-md font-semibold text-black mb-3">
+                  Compliance Check
+                </h3>
+
+                <div className="space-y-3 text-sm">
+                  {/* CLAIM INTEGRITY */}
+
+                  <div
+                    className={`border p-3 rounded ${getStatusBackground(
+                      complianceReport.claim_integrity.status,
+                    )}`}
+                  >
+                    <div className="flex justify-between">
+                      <span className="font-medium">Claim Integrity</span>
+                      <span
+                        className={getStatusColor(
+                          complianceReport.claim_integrity.status,
+                        )}
+                      >
+                        {complianceReport.claim_integrity.status}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-gray-700 mt-1">
+                      {complianceReport.claim_integrity.reason}
+                    </div>
+                  </div>
+
+                  {/* CITATION CHECK */}
+
+                  <div
+                    className={`border p-3 rounded ${getStatusBackground(
+                      complianceReport.citation_check.status,
+                    )}`}
+                  >
+                    <div className="flex justify-between">
+                      <span className="font-medium">Citation Check</span>
+                      <span
+                        className={getStatusColor(
+                          complianceReport.citation_check.status,
+                        )}
+                      >
+                        {complianceReport.citation_check.status}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-gray-700 mt-1">
+                      {complianceReport.citation_check.reason}
+                    </div>
+                  </div>
+
+                  {/* FAIR BALANCE */}
+
+                  <div
+                    className={`border p-3 rounded ${getStatusBackground(
+                      complianceReport.fair_balance.status,
+                    )}`}
+                  >
+                    <div className="flex justify-between">
+                      <span className="font-medium">Fair Balance</span>
+                      <span
+                        className={getStatusColor(
+                          complianceReport.fair_balance.status,
+                        )}
+                      >
+                        {complianceReport.fair_balance.status}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-gray-700 mt-1">
+                      {complianceReport.fair_balance.reason}
+                    </div>
+                  </div>
+
+                  {/* OFF LABEL RISK */}
+
+                  <div
+                    className={`border p-3 rounded ${getStatusBackground(
+                      complianceReport.off_label_risk.status,
+                    )}`}
+                  >
+                    <div className="flex justify-between">
+                      <span className="font-medium">Off Label Risk</span>
+                      <span
+                        className={getStatusColor(
+                          complianceReport.off_label_risk.status,
+                        )}
+                      >
+                        {complianceReport.off_label_risk.status}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-gray-700 mt-1">
+                      {complianceReport.off_label_risk.reason}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {validationError && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-300 text-red-700 rounded-lg">
+                {validationError}
               </div>
             )}
           </div>

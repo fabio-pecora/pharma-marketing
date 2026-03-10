@@ -203,9 +203,12 @@ Return plain text only.
 
     refined_text = response.choices[0].message.content
 
-    validate_claims(refined_text, claims)
+    compliance_report = validate_claims(refined_text, claims)
 
-    return refined_text
+    return {
+        "html": refined_text,
+        "compliance_report": compliance_report
+    }
 
 
 def generate_claim_request_email(audience, category, therapeutic_area):

@@ -54,16 +54,14 @@ def refine_content(request: RefineRequest):
     claims = get_claims_by_ids(request.claim_ids)
 
     try:
-        refined = refine_generated_content(
+        result = refine_generated_content(
             request.content,
             request.refine_type,
             request.instruction,
             claims
         )
 
-        return {
-            "html": refined
-        }
+        return result
 
     except ValueError as e:
         return {
