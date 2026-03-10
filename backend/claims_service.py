@@ -4,20 +4,21 @@ from database import get_connection
 from database import get_connection
 
 
-def get_recommended_claims(category, therapeutic_area):
+def get_recommended_claims(categories, therapeutic_area):
 
     conn = get_connection()
     cur = conn.cursor()
+    categories = [c.lower() for c in categories]
 
     query = """
     SELECT id, claim_text, citation
     FROM claims
-    WHERE LOWER(category) = LOWER(%s)
+    WHERE LOWER(category) = ANY(%s)
     AND LOWER(therapeutic_area) = LOWER(%s)
     LIMIT 10
     """
 
-    cur.execute(query, (category, therapeutic_area))
+    cur.execute(query, (categories, therapeutic_area))
 
     rows = cur.fetchall()
 

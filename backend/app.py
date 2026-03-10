@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from typing import List
+from fastapi import Query
 
 from models import ClaimSelectionRequest, RefineRequest, ClaimRequestEmail
 from pipeline import generate_project_content, refine_generated_content, generate_claim_request_email
@@ -17,21 +20,24 @@ app.add_middleware(
 
 
 @app.get("/recommended-claims")
-def recommended_claims(category: str, therapeutic_area: str):
+def recommended_claims(
+    categories: List[str] = Query(...),
+    therapeutic_area: str = Query(...)
+):
 
     claims = get_recommended_claims(
-        category,
+        categories,
         therapeutic_area
     )
 
     return claims
 
-
 @app.post("/generate-content")
 def generate_content(request: ClaimSelectionRequest):
 
     try:
-        result = generate_project_content(
+
+        generator = generate_project_content(
             request.content_type,
             request.audience,
             request.goal,
@@ -40,12 +46,10 @@ def generate_content(request: ClaimSelectionRequest):
             request.claim_ids
         )
 
-        return result
+        return StreamingResponse(generator, media_type="text/plain")
 
     except ValueError as e:
-        return {
-            "error": str(e)
-        }
+        return {"error": str(e)}
 
 
 @app.post("/refine-content")
@@ -84,3 +88,29 @@ def draft_claim_request(request: ClaimRequestEmail):
 
     return {"email": email}
 
+@app.get("/project-metadata/{project_id}")
+def get_project_metadata(project_id: int):
+
+    from database import get_connection
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT compliance_report, claims_used
+        FROM project_metadata
+        WHERE project_id = %s
+    """, (project_id,))
+
+    result = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not result:
+        return {}
+
+    return {
+        "compliance_report": result[0],
+        "claims_used": result[1]
+    }

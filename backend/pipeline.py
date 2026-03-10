@@ -5,6 +5,7 @@ from claims_service import get_claims_by_ids
 from content_service import create_project, store_version
 from compliance_service import validate_claims
 from database import get_connection
+import json
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -15,6 +16,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def generate_project_content(content_type, audience, goal, tone, therapeutic_area, claim_ids):
 
     project_id = create_project(content_type, audience, goal, tone, therapeutic_area)
+    yield f"__PROJECT_ID__:{project_id}\n"
 
     claims = get_claims_by_ids(claim_ids)
 
@@ -100,26 +102,52 @@ Return ONLY the requested format.
         messages=[
             {"role": "system", "content": "You generate compliant pharmaceutical marketing content."},
             {"role": "user", "content": prompt}
-        ]
+        ],
+        stream=True
     )
 
-    generated_text = response.choices[0].message.content
+    generated_text = ""
 
+    for chunk in response:
+
+        delta = chunk.choices[0].delta
+
+        if delta and delta.content:
+
+            token = delta.content
+            generated_text += token
+
+            yield token
     compliance_report = validate_claims(generated_text, claims)
 
     compliance_passed = all(
         v["status"] != "fail" for v in compliance_report.values()
     )
 
+    # store version
     store_version(project_id, 1, generated_text, compliance_passed)
 
-    return {
-        "html": generated_text,
-        "compliance_passed": compliance_passed,
-        "compliance_report": compliance_report,
-        "project_id": project_id,
-        "claims_used": claims
-    }
+    # ---------------------------------------------
+    # STORE METADATA (for compliance UI)
+    # ---------------------------------------------
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        INSERT INTO project_metadata (project_id, compliance_report, claims_used)
+        VALUES (%s, %s, %s)
+        """,
+        (
+            project_id,
+            json.dumps(compliance_report),
+            json.dumps(claims)
+        )
+    )
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
 
 # ----------------------------------------------------

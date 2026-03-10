@@ -26,7 +26,7 @@ function extractText(html: string) {
 
 export default function Page() {
   const [audience, setAudience] = useState("HCP");
-  const [category, setCategory] = useState("efficacy");
+  const [categories, setCategories] = useState<string[]>(["efficacy"]);
   const [therapeuticArea, setTherapeuticArea] = useState("Oncology");
 
   const [contentType, setContentType] = useState("email");
@@ -61,15 +61,23 @@ export default function Page() {
 
   async function loadClaims() {
     setRetrievalAttempted(true);
-    if (category === "request_claim") {
+
+    if (categories.length === 0) {
+      alert("Please select at least one claim category.");
+      return;
+    }
+
+    if (categories.includes("request_claim")) {
       setClaims([]);
       return;
     }
-    try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/recommended-claims?category=${category}&therapeutic_area=${therapeuticArea}`,
-      );
 
+    try {
+      const categoryQuery = categories.map((c) => `categories=${c}`).join("&");
+
+      const res = await fetch(
+        `http://127.0.0.1:8000/recommended-claims?${categoryQuery}&therapeutic_area=${therapeuticArea}`,
+      );
       const data = await res.json();
 
       if (Array.isArray(data)) {
@@ -92,7 +100,7 @@ export default function Page() {
         },
         body: JSON.stringify({
           audience,
-          category,
+          category: categories[0],
           therapeutic_area: therapeuticArea,
         }),
       });
@@ -116,6 +124,20 @@ export default function Page() {
     }
   }
 
+  async function loadCompliance(projectId: number) {
+    const res = await fetch(
+      `http://127.0.0.1:8000/project-metadata/${projectId}`,
+    );
+    const data = await res.json();
+
+    if (data.claims_used) {
+      setClaimsUsed(data.claims_used);
+    }
+
+    if (data.compliance_report) {
+      setComplianceReport(data.compliance_report);
+    }
+  }
   async function generate() {
     if (selectedClaims.length === 0) {
       alert(
@@ -144,42 +166,42 @@ export default function Page() {
         }),
       });
 
-      const data = await res.json();
-
-      // VERY IMPORTANT: log backend response
-      console.log("Backend response:", data);
-
-      // HANDLE ERROR FROM BACKEND
-      if (data.error) {
-        console.error("Backend error:", data.error);
-        setValidationError(data.error);
-        setVersions([]);
-        return;
+      if (!res.body) {
+        throw new Error("Streaming response body is null");
       }
 
-      // HANDLE SUCCESS
-      if (data.html) {
-        setVersions([data.html]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      let streamedText = "";
+      let streamedProjectId: number | null = null;
+
+      setVersions([""]);
+      setCurrentVersion(0);
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        const chunkText = decoder.decode(value);
+
+        if (chunkText.startsWith("__PROJECT_ID__")) {
+          const id = parseInt(chunkText.replace("__PROJECT_ID__:", "").trim());
+
+          streamedProjectId = id;
+          setProjectId(id);
+
+          continue;
+        }
+
+        streamedText += chunkText;
+
+        setVersions([streamedText]);
         setCurrentVersion(0);
-        setShowRefine(false);
-        setValidationError("");
-        if (data.project_id) {
-          setProjectId(data.project_id);
-        }
-
-        if (data.claims_used) {
-          setClaimsUsed(data.claims_used);
-        }
-
-        if (data.compliance_report) {
-          setComplianceReport(data.compliance_report);
-        }
       }
-
-      // IF NOTHING RETURNED
-      if (!data.html && !data.error) {
-        console.error("Unexpected response:", data);
-        alert("Unexpected backend response. Check console.");
+      if (streamedProjectId) {
+        await loadCompliance(streamedProjectId);
       }
     } catch (error) {
       console.error("Generation failed:", error);
@@ -481,17 +503,41 @@ export default function Page() {
                 Claim Category
               </label>
 
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className={selectStyle}
-              >
-                <option value="indication">Indication</option>
-                <option value="efficacy">Efficacy</option>
-                <option value="safety">Safety</option>
-                <option value="dosing">Dosing</option>
-                <option value="request_claim">Request New Claim</option>
-              </select>
+              <div className="space-y-2">
+                {["indication", "efficacy", "safety", "dosing"].map((cat) => (
+                  <label
+                    key={cat}
+                    className="flex items-center gap-2 text-sm text-gray-800"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={categories.includes(cat)}
+                      onChange={() => {
+                        setIsClaimRequest(false);
+
+                        if (categories.includes(cat)) {
+                          setCategories(categories.filter((c) => c !== cat));
+                        } else {
+                          setCategories([...categories, cat]);
+                        }
+                      }}
+                    />
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </label>
+                ))}
+
+                <label className="flex items-center gap-2 text-sm text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={categories.includes("request_claim")}
+                    onChange={() => {
+                      setCategories(["request_claim"]);
+                      setIsClaimRequest(true);
+                    }}
+                  />
+                  Request New Claim
+                </label>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
