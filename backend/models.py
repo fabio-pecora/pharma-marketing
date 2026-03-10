@@ -10,12 +10,12 @@ class ClaimSelectionRequest(BaseModel):
     therapeutic_area: str
     claim_ids: List[int]
 
-
 class RefineRequest(BaseModel):
+    project_id: int
     content: str
     refine_type: str
     instruction: str
-    claim_ids: List[int]
+    claim_ids: list[int]
 
 
 class ClaimRequestEmail(BaseModel):

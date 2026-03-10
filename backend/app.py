@@ -55,11 +55,12 @@ def refine_content(request: RefineRequest):
 
     try:
         result = refine_generated_content(
-            request.content,
-            request.refine_type,
-            request.instruction,
-            claims
-        )
+        request.project_id,
+        request.content,
+        request.refine_type,
+        request.instruction,
+        claims
+    )
 
         return result
 

@@ -4,6 +4,7 @@ from openai import OpenAI
 from claims_service import get_claims_by_ids
 from content_service import create_project, store_version
 from compliance_service import validate_claims
+from database import get_connection
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -197,7 +198,9 @@ def validate_claim_preservation(refined_content, claims):
 # ----------------------------------------------------
 # REFINE GENERATED CONTENT
 # ----------------------------------------------------
-def refine_generated_content(content, refine_type, instruction, claims):
+
+
+def refine_generated_content(project_id, content, refine_type, instruction, claims):
 
     # STEP 1: policy guardrail
     check_refinement_policy(instruction, refine_type)
@@ -264,6 +267,26 @@ Return ONLY the refined content.
 
     # STEP 3: compliance review
     compliance_report = validate_claims(refined_text, claims)
+
+    # STEP 4: STORE NEW VERSION
+    from database import get_connection
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT MAX(version_number)
+    FROM content_versions
+    WHERE project_id = %s
+    """, (project_id,))
+
+    last_version = cur.fetchone()[0] or 1
+    new_version = last_version + 1
+
+    cur.close()
+    conn.close()
+
+    store_version(project_id, new_version, refined_text, True)
 
     return {
         "html": refined_text,

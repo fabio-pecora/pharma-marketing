@@ -40,6 +40,7 @@ export default function Page() {
   const [versions, setVersions] = useState<string[]>([]);
   const [currentVersion, setCurrentVersion] = useState(0);
   const [validationError, setValidationError] = useState("");
+  const [projectId, setProjectId] = useState<number | null>(null);
 
   const generated = versions.length > 0 ? versions[currentVersion] : "";
 
@@ -154,6 +155,9 @@ export default function Page() {
         setCurrentVersion(0);
         setShowRefine(false);
         setValidationError("");
+        if (data.project_id) {
+          setProjectId(data.project_id);
+        }
 
         if (data.claims_used) {
           setClaimsUsed(data.claims_used);
@@ -189,10 +193,11 @@ export default function Page() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          content: textContent,
-          refine_type: refineOptions.join(", "),
-          instruction: customPrompt,
-          claim_ids: selectedClaims,
+        project_id: projectId,
+        content: textContent,
+        refine_type: refineOptions.join(", "),
+        instruction: customPrompt,
+        claim_ids: selectedClaims,
         }),
       });
 
