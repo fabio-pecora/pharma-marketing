@@ -63,7 +63,6 @@ Main capabilities:
                        │ Versions      │   │ Refinement       │   │ Fair Balance    │
                        │               │   │                  │   │ Off-label Risk  │
                        └───────────────┘   └──────────────────┘   └─────────────────┘
-```
 ---
 
 # Technology Stack
@@ -369,6 +368,7 @@ Potential extensions include:
 - real-time collaborative editing
 - user authentication and permissions
 - full compliance audit trail
+
 
 
 
