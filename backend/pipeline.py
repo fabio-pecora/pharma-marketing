@@ -174,6 +174,7 @@ You may:
 - shorten or expand explanations
 
 You may NOT introduce new claims.
+You may NOT remove approved claims or their citations.
 
 APPROVED CLAIMS
 {claims_text}
@@ -203,12 +204,22 @@ Return plain text only.
 
     refined_text = response.choices[0].message.content
 
-    compliance_report = validate_claims(refined_text, claims)
+    try:
 
-    return {
-        "html": refined_text,
-        "compliance_report": compliance_report
-    }
+        validate_claim_preservation(content, refined_text, claims)
+
+        compliance_report = validate_claims(refined_text, claims)
+
+        return {
+            "html": refined_text,
+            "compliance_report": compliance_report
+        }
+
+    except ValueError as e:
+
+        return {
+            "error": str(e)
+        }
 
 
 def generate_claim_request_email(audience, category, therapeutic_area):
@@ -255,3 +266,31 @@ Do not use markdown.
     )
 
     return response.choices[0].message.content
+
+def validate_claim_preservation(original_content, refined_content, claims):
+
+    refined = refined_content.lower()
+
+    for claim in claims:
+
+        claim_text = claim["claim_text"].lower()
+
+        keywords = claim_text.split()[:6]
+
+        matches = sum(1 for k in keywords if k in refined)
+
+        if matches < max(2, len(keywords) // 2):
+            raise ValueError(
+                f"Refinement removed or altered an approved claim: '{claim['claim_text']}'. "
+                "Approved claims cannot be removed."
+            )
+
+        citation = claim["citation"].lower()
+
+        if citation not in refined:
+            raise ValueError(
+                f"Refinement removed required citation: '{claim['citation']}'. "
+                "Approved claims must retain their citations."
+            )
+
+    return True
