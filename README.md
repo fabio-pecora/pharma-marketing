@@ -30,39 +30,39 @@ Main capabilities:
 
 # System Architecture
 
-                ┌───────────────────────────┐
-                │        Frontend UI        │
-                │        (Next.js)          │
-                │                           │
-                │ Claim Selection           │
-                │ Content Generation        │
-                │ Refinement UI             │
-                │ Compliance Display        │
-                └─────────────┬─────────────┘
-                              │
-                              │ REST API
-                              ▼
-                ┌───────────────────────────┐
-                │         FastAPI API       │
-                │                           │
-                │ /recommended-claims       │
-                │ /generate-content         │
-                │ /refine-content           │
-                │ /draft-claim-request      │
-                └─────────────┬─────────────┘
-                              │
-                              │
-            ┌─────────────────┼────────────────────┐
-            ▼                 ▼                    ▼
-
- ┌───────────────┐   ┌──────────────────┐   ┌─────────────────┐
- │ PostgreSQL DB │   │   LLM Pipeline   │   │ Compliance Layer│
- │               │   │                  │   │                 │
- │ Claims        │   │ Prompt Builder   │   │ Claim Integrity │
- │ Projects      │   │ Content Gen      │   │ Citation Check  │
- │ Versions      │   │ Refinement       │   │ Fair Balance    │
- │               │   │                  │   │ Off-label Risk  │
- └───────────────┘   └──────────────────┘   └─────────────────┘
+                                                        ┌───────────────────────────┐
+                                                        │        Frontend UI        │
+                                                        │        (Next.js)          │
+                                                        │                           │
+                                                        │ Claim Selection           │
+                                                        │ Content Generation        │
+                                                        │ Refinement UI             │
+                                                        │ Compliance Display        │
+                                                        └─────────────┬─────────────┘
+                                                                      │
+                                                                      │ REST API
+                                                                      ▼
+                                                        ┌───────────────────────────┐
+                                                        │         FastAPI API       │
+                                                        │                           │
+                                                        │ /recommended-claims       │
+                                                        │ /generate-content         │
+                                                        │ /refine-content           │
+                                                        │ /draft-claim-request      │
+                                                        └─────────────┬─────────────┘
+                                                                      │
+                                                                      │
+                                                    ┌─────────────────┼────────────────────┐
+                                                    ▼                 ▼                    ▼
+                                        
+                                         ┌───────────────┐   ┌──────────────────┐   ┌─────────────────┐
+                                         │ PostgreSQL DB │   │   LLM Pipeline   │   │ Compliance Layer│
+                                         │               │   │                  │   │                 │
+                                         │ Claims        │   │ Prompt Builder   │   │ Claim Integrity │
+                                         │ Projects      │   │ Content Gen      │   │ Citation Check  │
+                                         │ Versions      │   │ Refinement       │   │ Fair Balance    │
+                                         │               │   │                  │   │ Off-label Risk  │
+                                         └───────────────┘   └──────────────────┘   └─────────────────┘
 ```
 ---
 
@@ -369,5 +369,6 @@ Potential extensions include:
 - real-time collaborative editing
 - user authentication and permissions
 - full compliance audit trail
+
 
 
