@@ -78,31 +78,31 @@ Main capabilities:
 ---
 
 # Project Structure
-
- project/
-│
-├── backend/
-│
-│   ├── app.py
-│   ├── pipeline.py
-│   ├── database.py
-│   ├── config.py
-│   ├── models.py
-│   │
-│   ├── services/
-│   │     ├── claims_service.py
-│   │     ├── content_service.py
-│   │     └── compliance_service.py
-│
-├── frontend/
-│
-│   ├── app/
-│   │     ├── page.tsx
-│   │     └── layout.tsx
-│   │
-│   └── styles/
-│
-└── README.md
+  
+     project/
+    │
+    ├── backend/
+    │
+    │   ├── app.py
+    │   ├── pipeline.py
+    │   ├── database.py
+    │   ├── config.py
+    │   ├── models.py
+    │   │
+    │   ├── services/
+    │   │     ├── claims_service.py
+    │   │     ├── content_service.py
+    │   │     └── compliance_service.py
+    │
+    ├── frontend/
+    │
+    │   ├── app/
+    │   │     ├── page.tsx
+    │   │     └── layout.tsx
+    │   │
+    │   └── styles/
+    │
+    └── README.md
 
 
 # Database Schema
@@ -368,6 +368,7 @@ Potential extensions include:
 - real-time collaborative editing
 - user authentication and permissions
 - full compliance audit trail
+
 
 
 
