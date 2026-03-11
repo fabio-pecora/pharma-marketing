@@ -60,7 +60,7 @@ export default function Page() {
   const [approvedClaimsFile, setApprovedClaimsFile] = useState<File | null>(
     null,
   );
-
+  const [loadingClaims, setLoadingClaims] = useState(false);
   const selectStyle =
     "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
@@ -223,6 +223,8 @@ export default function Page() {
     }
 
     try {
+      setLoadingClaims(true); // START LOADING
+
       const formData = new FormData();
       formData.append("file", file);
       formData.append("material_type", type);
@@ -242,6 +244,8 @@ export default function Page() {
     } catch (error) {
       console.error("Upload failed:", error);
       alert("File upload failed. Check backend.");
+    } finally {
+      setLoadingClaims(false); // STOP LOADING
     }
   }
   async function refine() {
@@ -509,8 +513,8 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="border-b bg-white">
-        <div className="max-w-5xl mx-auto px-6 py-5 flex justify-between">
+      <div className="bg-white border-b shadow-sm">
+        <div className="max-w-6xl mx-auto px-8 py-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">
             FRUZAQLA Marketing Content Generator
           </h1>
@@ -523,20 +527,35 @@ export default function Page() {
 
       <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Upload Evidence Library
-          </h2>
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Upload Evidence Library
+            </h2>
+          </div>
 
           <p className="text-gray-500 text-sm mb-6">
             Upload clinical facts and approved claims to populate the claims
             library.
           </p>
+          {loadingClaims && (
+            <div className="mb-6 flex items-center gap-3 text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+              <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+              <span className="text-sm font-medium">
+                Extracting clinical claims from document...
+              </span>
+            </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Clinical Facts File
-              </label>
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Clinical Facts Upload */}
+            <div className="border-2 border-dashed border-blue-300 rounded-xl p-6 bg-blue-50 hover:bg-blue-100 transition">
+              <h3 className="text-md font-semibold text-blue-800 mb-2">
+                Clinical Facts
+              </h3>
+
+              <p className="text-sm text-blue-700 mb-4">
+                Upload clinical studies, trial data, or supporting evidence.
+              </p>
 
               <input
                 type="file"
@@ -546,21 +565,28 @@ export default function Page() {
                   if (!file) return;
                   setClinicalFactsFile(file);
                 }}
+                className="block w-full text-sm text-gray-700 mb-4"
               />
 
               <button
                 type="button"
+                disabled={loadingClaims}
                 onClick={() => uploadFile(clinicalFactsFile, "clinical_fact")}
-                className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition"
               >
-                Upload Clinical Facts
+                {loadingClaims ? "Uploading..." : "Upload Clinical Facts"}
               </button>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Approved Claims File
-              </label>
+            {/* Approved Claims Upload */}
+            <div className="border-2 border-dashed border-green-300 rounded-xl p-6 bg-green-50 hover:bg-green-100 transition">
+              <h3 className="text-md font-semibold text-green-800 mb-2">
+                Approved Claims
+              </h3>
+
+              <p className="text-sm text-green-700 mb-4">
+                Upload approved marketing claims from regulatory documents.
+              </p>
 
               <input
                 type="file"
@@ -570,17 +596,21 @@ export default function Page() {
                   if (!file) return;
                   setApprovedClaimsFile(file);
                 }}
+                className="block w-full text-sm text-gray-700 mb-4"
               />
 
               <button
                 type="button"
+                disabled={loadingClaims}
                 onClick={() => uploadFile(approvedClaimsFile, "claim")}
-                className="mt-3 bg-green-600 text-white px-4 py-2 rounded"
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition"
               >
-                Upload Approved Claims
+                {loadingClaims ? "Uploading..." : "Upload Approved Claims"}
               </button>
             </div>
           </div>
+
+          <div></div>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">
@@ -697,9 +727,15 @@ export default function Page() {
           </div>
         ) : claims.length > 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Available Claims
-            </h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Available Claims
+              </h2>
+
+              <span className="text-sm text-gray-500">
+                {claims.length} claims found
+              </span>
+            </div>
 
             <div className="space-y-3">
               {claims.map((claim) => (
