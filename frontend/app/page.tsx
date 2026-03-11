@@ -514,102 +514,145 @@ export default function Page() {
 
   <style>
 
-  body{
-  font-family:Arial, Helvetica, sans-serif;
-  background:${backgroundColor};
-  padding:40px;
-  margin:0;
-  }
+body{
+font-family:Arial, Helvetica, sans-serif;
+background:${backgroundColor};
+padding:40px;
+margin:0;
+}
 
-  .container{
-  max-width:640px;
-  margin:auto;
-  background:white;
-  border-radius:8px;
-  overflow:hidden;
-  box-shadow:0 4px 14px rgba(0,0,0,0.08);
-  }
+.container{
+max-width:640px;
+margin:auto;
+background:white;
+border-radius:8px;
+overflow:hidden;
+box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
 
-  .logo-area{
-  padding:24px 28px;
-  background:white;
-  border-bottom:1px solid #eee;
-  display:flex;
-  justify-content:center;
-  }
+/* HEADER */
 
-  .brand-logo{
-  max-width:220px;
-  height:auto;
-  object-fit:contain;
-  }
+.logo-area{
+padding:28px;
+background:white;
+display:flex;
+justify-content:center;
+align-items:center;
+border-bottom:1px solid #eee;
+}
 
-  .brand-bar{
-  height:6px;
-  background:${accentColor};
-  }
+.brand-logo{
+max-width:220px;
+height:auto;
+object-fit:contain;
+}
 
-  .content{
-  padding:32px;
-  color:#1F2937;
-  line-height:1.6;
-  font-size:16px;
-  }
+/* BRAND COLOR STRIP */
 
-  h2{
-  color:${primaryColor};
-  margin-top:0;
-  }
+.brand-bar{
+height:8px;
+background:linear-gradient(90deg, ${primaryColor}, ${accentColor});
+}
 
-  h3{
-  color:${primaryColor};
-  margin-top:24px;
-  }
+/* MAIN CONTENT */
 
-  .divider{
-  height:4px;
-  background:${accentColor};
-  width:80px;
-  margin:16px 0;
-  }
+.content{
+padding:36px;
+color:#1F2937;
+line-height:1.6;
+font-size:16px;
+}
 
-  .claims-section{
-  margin-top:40px;
-  }
+/* TITLES */
 
-  .claim-box{
-  background:#F7F2F8;
-  border-left:4px solid ${accentColor};
-  padding:16px;
-  margin-top:12px;
-  border-radius:6px;
-  }
+h2{
+color:${primaryColor};
+margin-top:0;
+font-size:22px;
+}
 
-  .claim-text{
-  font-size:14px;
-  color:#1f2937;
-  }
+h3{
+color:${primaryColor};
+margin-top:28px;
+font-size:18px;
+}
 
-  .claim-citation{
-  font-size:12px;
-  color:#6b7280;
-  margin-top:4px;
-  }
+/* SECTION DIVIDER */
 
-  .metadata-section{
-  margin-top:40px;
-  font-size:12px;
-  color:#6b7280;
-  }
+.divider{
+height:4px;
+background:${accentColor};
+width:80px;
+margin:18px 0;
+border-radius:3px;
+}
 
-  .footer{
-  background:#F9FAFB;
-  padding:20px;
-  font-size:12px;
-  color:#6B7280;
-  }
+/* CLAIMS SECTION */
 
-  </style>
+.claims-section{
+margin-top:40px;
+padding-top:10px;
+border-top:1px solid #e5e7eb;
+}
+
+.claim-box{
+background:#F8F9FC;
+border-left:5px solid ${accentColor};
+padding:16px;
+margin-top:14px;
+border-radius:6px;
+}
+
+.claim-text{
+font-size:14px;
+color:#1f2937;
+}
+
+.claim-citation{
+font-size:12px;
+color:#6b7280;
+margin-top:4px;
+}
+
+/* METADATA */
+
+.metadata-section{
+margin-top:40px;
+padding-top:16px;
+border-top:1px solid #e5e7eb;
+font-size:12px;
+color:#6b7280;
+}
+
+/* BUTTON STYLE (for website/social exports) */
+
+.button{
+display:inline-block;
+background:${primaryColor};
+color:white;
+padding:10px 18px;
+border-radius:6px;
+text-decoration:none;
+font-weight:600;
+margin-top:16px;
+}
+
+.button:hover{
+background:${accentColor};
+}
+
+/* FOOTER */
+
+.footer{
+background:#F9FAFB;
+padding:20px;
+font-size:12px;
+color:#6B7280;
+text-align:center;
+}
+
+</style>
+
   </head>
 
   <body>
