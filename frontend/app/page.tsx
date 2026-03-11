@@ -62,6 +62,7 @@ export default function Page() {
     description?: string;
     url: string;
   };
+  const [loadingVisualAssets, setLoadingVisualAssets] = useState(false);
 
   const [visualAssets, setVisualAssets] = useState<VisualAsset[]>([]);
   const [selectedVisualAssets, setSelectedVisualAssets] = useState<
@@ -268,6 +269,8 @@ export default function Page() {
     }
 
     try {
+      setLoadingVisualAssets(true);
+
       const formData = new FormData();
       formData.append("file", styleGuideFile);
 
@@ -294,6 +297,8 @@ export default function Page() {
     } catch (error) {
       console.error("Style guide upload failed:", error);
       alert("Failed to process style guide.");
+    } finally {
+      setLoadingVisualAssets(false);
     }
   }
 
@@ -721,7 +726,14 @@ export default function Page() {
             </div>
           </div>
         </div>
-
+        {loadingVisualAssets && (
+          <div className="bg-white border border-purple-200 rounded-xl shadow-sm p-7 flex items-center gap-3 text-purple-700">
+            <div className="animate-spin h-4 w-4 border-2 border-purple-600 border-t-transparent rounded-full"></div>
+            <span className="text-sm font-medium">
+              Extracting visual assets from brand style guide...
+            </span>
+          </div>
+        )}
         {/* Detected Visual Assets */}
         {visualAssets.length > 0 && (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
