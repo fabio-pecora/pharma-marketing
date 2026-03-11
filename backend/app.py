@@ -321,8 +321,9 @@ async def upload_style_guide(file: UploadFile = File(...)):
     with open(file_location, "wb") as buffer:
         buffer.write(await file.read())
 
-    detected_assets = process_style_guide(file_location)
+    result = process_style_guide(file_location)
 
     return {
-        "detected_assets": detected_assets
+        "detected_assets": result["detected_assets"],
+        "brand_colors": result["brand_colors"]
     }

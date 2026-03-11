@@ -7,6 +7,8 @@ import json
 from PIL import Image
 from database import get_connection
 from openai import OpenAI
+import numpy as np
+from sklearn.cluster import KMeans
 
 client = OpenAI()
 
@@ -26,7 +28,7 @@ def extract_images_from_pdf(file_path):
     for page_index in range(len(doc)):
         page = doc[page_index]
 
-        for img in page.get_images():
+        for img in page.get_images(full=True):
 
             xref = img[0]
             base_image = doc.extract_image(xref)
@@ -82,6 +84,41 @@ def filter_visual_asset(image_path):
 
     return True
 
+# ---------------------------------------------------
+# Extract brand colors
+# ---------------------------------------------------
+def extract_brand_colors(image_paths, k=4):
+
+    pixels = []
+
+    for path in image_paths:
+
+        try:
+            img = Image.open(path).convert("RGB")
+            img = img.resize((150, 150))
+
+            arr = np.array(img).reshape(-1, 3)
+            pixels.append(arr)
+
+        except:
+            continue
+
+    if len(pixels) == 0:
+        return []
+
+    pixels = np.vstack(pixels)
+
+    kmeans = KMeans(n_clusters=k, n_init=10)
+    kmeans.fit(pixels)
+
+    colors = kmeans.cluster_centers_
+
+    hex_colors = [
+        '#%02x%02x%02x' % tuple(map(int, color))
+        for color in colors
+    ]
+
+    return hex_colors
 
 # ---------------------------------------------------
 # LLM classification
@@ -173,6 +210,9 @@ def store_visual_asset(asset_type, file_path, description):
 # ---------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------
+# ---------------------------------------------------
+# Main pipeline
+# ---------------------------------------------------
 def process_style_guide(pdf_path):
 
     images = extract_images_from_pdf(pdf_path)
@@ -203,8 +243,18 @@ def process_style_guide(pdf_path):
         detected_assets.append({
             "type": asset_type,
             "description": description,
-            "file_path": img
+            "file_path": os.path.basename(img)
         })
 
-    # Limit results so UI is not overloaded
-    return detected_assets[:15]
+    # Limit assets returned to UI
+    detected_assets = detected_assets[:15]
+
+    # Extract brand colors from images
+    image_paths = [os.path.join(UPLOAD_DIR, a["file_path"]) for a in detected_assets]
+
+    brand_colors = extract_brand_colors(image_paths)
+
+    return {
+        "detected_assets": detected_assets,
+        "brand_colors": brand_colors
+    }

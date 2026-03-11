@@ -63,6 +63,7 @@ export default function Page() {
     url: string;
   };
   const [loadingVisualAssets, setLoadingVisualAssets] = useState(false);
+  const [brandColors, setBrandColors] = useState<string[]>([]);
 
   const [visualAssets, setVisualAssets] = useState<VisualAsset[]>([]);
   const [selectedVisualAssets, setSelectedVisualAssets] = useState<
@@ -284,12 +285,15 @@ export default function Page() {
       }
 
       const data = await res.json();
+      if (data.brand_colors) {
+        setBrandColors(data.brand_colors.slice(0, 5));
+      }
 
-      if (data.detected_assets) {
+      if (Array.isArray(data.detected_assets)) {
         const assets = data.detected_assets.map((asset: any) => ({
           type: asset.type,
-          description: asset.description,
-          url: `http://127.0.0.1:8000/${asset.file_path}`,
+          description: asset.description || "",
+          url: `http://127.0.0.1:8000/visual_assets/${asset.file_path}`,
         }));
 
         setVisualAssets(assets);
@@ -747,9 +751,9 @@ export default function Page() {
             </p>
 
             <div className="grid grid-cols-3 gap-6">
-              {visualAssets.map((asset) => (
+              {visualAssets.map((asset, index) => (
                 <label
-                  key={asset.url}
+                  key={`${asset.url}-${index}`}
                   className="border border-gray-200 rounded-lg p-4 flex flex-col items-center gap-3 hover:bg-gray-50 cursor-pointer"
                 >
                   <input
@@ -778,22 +782,37 @@ export default function Page() {
 
                   <img
                     src={asset.url}
-                    alt={asset.description || asset.type}
+                    alt={asset.description || "visual asset"}
                     className="w-24 border rounded-md"
                   />
 
-                  <div className="text-center">
-                    <span className="text-sm font-semibold text-gray-800 capitalize">
-                      {asset.type}
-                    </span>
-
-                    {asset.description && (
-                      <p className="text-xs text-gray-500 mt-1">
+                  {asset.description &&
+                    typeof asset.description === "string" && (
+                      <p className="text-sm text-gray-700 text-center">
                         {asset.description}
                       </p>
                     )}
-                  </div>
                 </label>
+              ))}
+            </div>
+          </div>
+        )}
+        {brandColors.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Brand Colors
+            </h2>
+
+            <div className="flex gap-4">
+              {brandColors.map((color) => (
+                <div key={color} className="flex flex-col items-center">
+                  <div
+                    className="w-14 h-14 rounded-md border shadow-sm"
+                    style={{ backgroundColor: color }}
+                  />
+
+                  <span className="text-xs text-gray-600 mt-1">{color}</span>
+                </div>
               ))}
             </div>
           </div>
