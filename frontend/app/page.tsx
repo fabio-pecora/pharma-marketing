@@ -503,40 +503,69 @@ export default function Page() {
                 Claim Category
               </label>
 
-              <div className="space-y-2">
-                {["indication", "efficacy", "safety", "dosing"].map((cat) => (
-                  <label
-                    key={cat}
-                    className="flex items-center gap-2 text-sm text-gray-800"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={categories.includes(cat)}
-                      onChange={() => {
+              <div className="grid grid-cols-2 gap-3">
+                {["indication", "efficacy", "safety", "dosing"].map((cat) => {
+                  const selected = categories.includes(cat);
+
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
                         setIsClaimRequest(false);
 
-                        if (categories.includes(cat)) {
-                          setCategories(categories.filter((c) => c !== cat));
-                        } else {
-                          setCategories([...categories, cat]);
-                        }
-                      }}
-                    />
-                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                  </label>
-                ))}
+                        let updated = categories.filter(
+                          (c) => c !== "request_claim",
+                        );
 
-                <label className="flex items-center gap-2 text-sm text-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={categories.includes("request_claim")}
-                    onChange={() => {
-                      setCategories(["request_claim"]);
-                      setIsClaimRequest(true);
-                    }}
-                  />
-                  Request New Claim
-                </label>
+                        if (updated.includes(cat)) {
+                          updated = updated.filter((c) => c !== cat);
+                        } else {
+                          updated = [...updated, cat];
+                        }
+
+                        setCategories(updated);
+                      }}
+                      className={`
+                    border rounded-lg p-3 text-sm text-left transition
+                    ${
+                      selected
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                    }
+                    `}
+                    >
+                      <div className="font-medium capitalize">{cat}</div>
+
+                      <div className="text-xs opacity-80">
+                        Approved {cat} claims
+                      </div>
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategories(["request_claim"]);
+                    setSelectedClaims([]);
+                    setClaims([]);
+                    setIsClaimRequest(true);
+                  }}
+                  className={`
+                  mt-2 border rounded-lg p-3 text-sm text-left transition
+                  ${
+                    categories.includes("request_claim")
+                      ? "bg-orange-600 text-white border-orange-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  }
+                  `}
+                >
+                  <div className="font-medium">Request New Claim</div>
+                  <div className="text-xs opacity-80">
+                    Send request to MLR team
+                  </div>
+                </button>
               </div>
             </div>
             <div>
