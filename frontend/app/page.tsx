@@ -383,52 +383,60 @@ export default function Page() {
     setVersions(updated);
   }
 
-  function exportHTML() {
+  async function imageToBase64(url: string) {
+    const response = await fetch(url);
+    const blob = await response.blob();
+
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function exportHTML() {
     if (!generated) return;
 
     let htmlContent = generated;
 
-    // VISUAL ELEMENTS SELECTED BY USER
+    const primaryColor = selectedColors[0] || "#002855";
+    const accentColor = selectedColors[1] || "#8C4799";
+    const backgroundColor = selectedColors[2] || "#F5F6F8";
+
     let visualHTML = "";
 
-    selectedVisualAssets.forEach((asset) => {
-      if (asset.type === "logo") {
-        visualHTML += `
+    // ------------------------------------------------
+    // EMBED LOGO AS BASE64
+    // ------------------------------------------------
+
+    const logos = selectedVisualAssets.filter((a) =>
+      ["logo", "icon"].includes((a.type || "").toLowerCase()),
+    );
+
+    if (logos.length > 0) {
+      try {
+        const response = await fetch(logos[0].url);
+        const blob = await response.blob();
+
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+
+        visualHTML = `
           <div class="logo-area">
-            <img 
-              src="${asset.url}"
-              style="height:60px"
-            />
+            <img src="${base64}" alt="brand logo" class="brand-logo"/>
           </div>
         `;
+      } catch (err) {
+        console.error("Logo embedding failed:", err);
       }
+    }
 
-      if (asset.type === "chart") {
-        visualHTML += `
-          <div style="padding:20px 28px;text-align:center;">
-            <img 
-              src="${asset.url}"
-              style="max-width:100%;border-radius:6px"
-            />
-          </div>
-        `;
-      }
-
-      if (asset.type === "icon") {
-        visualHTML += `
-          <div style="padding:10px 28px;">
-            <img 
-              src="${asset.url}"
-              style="height:40px;margin-right:10px"
-            />
-          </div>
-        `;
-      }
-
-      if (asset.type === "divider") {
-        visualHTML += `<div class="brand-bar"></div>`;
-      }
-    });
+    // ------------------------------------------------
+    // CONVERT TEXT TO HTML IF NEEDED
+    // ------------------------------------------------
 
     const looksLikeHTML =
       htmlContent.includes("<p") ||
@@ -447,26 +455,25 @@ export default function Page() {
         .join("");
     }
 
+    // ------------------------------------------------
+    // CLAIMS SECTION
+    // ------------------------------------------------
+
     let claimsHTML = "";
 
     if (claimsUsed.length > 0) {
       claimsHTML = `
-        <div style="margin-top:40px;">
-          <h3 style="color:#002855;">Approved Claims Used</h3>
+        <div class="claims-section">
+          <h3>Approved Claims Used</h3>
 
           ${claimsUsed
             .map(
               (claim) => `
-              <div style="background:#F7F2F8;border-left:4px solid #8C4799;padding:16px;margin-top:12px;border-radius:6px;">
-                <div style="font-size:14px;color:#1f2937;">
-                  ${claim.claim_text}
-                </div>
-
-                <div style="font-size:12px;color:#6b7280;margin-top:4px;">
-                  Citation: ${claim.citation}
-                </div>
-              </div>
-            `,
+            <div class="claim-box">
+              <div class="claim-text">${claim.claim_text}</div>
+              <div class="claim-citation">Citation: ${claim.citation}</div>
+            </div>
+          `,
             )
             .join("")}
 
@@ -474,9 +481,13 @@ export default function Page() {
       `;
     }
 
+    // ------------------------------------------------
+    // METADATA
+    // ------------------------------------------------
+
     const metadataHTML = `
-      <div style="margin-top:40px;font-size:12px;color:#6b7280;">
-        <h3 style="color:#002855;">Content Metadata</h3>
+      <div class="metadata-section">
+        <h3>Content Metadata</h3>
 
         <p><strong>Project ID:</strong> ${projectId ?? "N/A"}</p>
         <p><strong>Audience:</strong> ${audience}</p>
@@ -490,6 +501,10 @@ export default function Page() {
       </div>
     `;
 
+    // ------------------------------------------------
+    // FINAL HTML
+    // ------------------------------------------------
+
     const fullHTML = `
   <!DOCTYPE html>
   <html>
@@ -499,14 +514,14 @@ export default function Page() {
 
   <style>
 
-  body {
-  font-family: Arial, Helvetica, sans-serif;
-  background:#F5F6F8;
+  body{
+  font-family:Arial, Helvetica, sans-serif;
+  background:${backgroundColor};
   padding:40px;
   margin:0;
   }
 
-  .container {
+  .container{
   max-width:640px;
   margin:auto;
   background:white;
@@ -515,42 +530,79 @@ export default function Page() {
   box-shadow:0 4px 14px rgba(0,0,0,0.08);
   }
 
-  .content {
+  .logo-area{
+  padding:24px 28px;
+  background:white;
+  border-bottom:1px solid #eee;
+  display:flex;
+  justify-content:center;
+  }
+
+  .brand-logo{
+  max-width:220px;
+  height:auto;
+  object-fit:contain;
+  }
+
+  .brand-bar{
+  height:6px;
+  background:${accentColor};
+  }
+
+  .content{
   padding:32px;
   color:#1F2937;
   line-height:1.6;
   font-size:16px;
   }
 
-  .logo-area{
-  padding:22px 28px;
-  background:white;
-  border-bottom:1px solid #eee;
-  }
-
-  .brand-bar{
-  height:6px;
-  background:#8C4799;
-  }
-
-  h2 {
-  color:#002855;
+  h2{
+  color:${primaryColor};
   margin-top:0;
   }
 
-  h3 {
-  color:#002855;
+  h3{
+  color:${primaryColor};
   margin-top:24px;
   }
 
-  .divider {
+  .divider{
   height:4px;
-  background:#8C4799;
+  background:${accentColor};
   width:80px;
   margin:16px 0;
   }
 
-  .footer {
+  .claims-section{
+  margin-top:40px;
+  }
+
+  .claim-box{
+  background:#F7F2F8;
+  border-left:4px solid ${accentColor};
+  padding:16px;
+  margin-top:12px;
+  border-radius:6px;
+  }
+
+  .claim-text{
+  font-size:14px;
+  color:#1f2937;
+  }
+
+  .claim-citation{
+  font-size:12px;
+  color:#6b7280;
+  margin-top:4px;
+  }
+
+  .metadata-section{
+  margin-top:40px;
+  font-size:12px;
+  color:#6b7280;
+  }
+
+  .footer{
   background:#F9FAFB;
   padding:20px;
   font-size:12px;
@@ -558,7 +610,6 @@ export default function Page() {
   }
 
   </style>
-
   </head>
 
   <body>
@@ -566,6 +617,8 @@ export default function Page() {
   <div class="container">
 
   ${visualHTML}
+
+  <div class="brand-bar"></div>
 
   <div class="content">
 
@@ -599,7 +652,6 @@ export default function Page() {
 
     document.body.appendChild(a);
     a.click();
-
     document.body.removeChild(a);
 
     URL.revokeObjectURL(url);

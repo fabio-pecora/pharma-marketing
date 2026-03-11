@@ -247,7 +247,7 @@ def process_style_guide(pdf_path):
         })
 
     # Limit assets returned to UI
-    detected_assets = detected_assets[:15]
+    detected_assets = detected_assets[3:18]
 
     # Extract brand colors from images
     image_paths = [os.path.join(UPLOAD_DIR, a["file_path"]) for a in detected_assets]
