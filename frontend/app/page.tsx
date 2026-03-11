@@ -56,6 +56,17 @@ export default function Page() {
   const [retrievalAttempted, setRetrievalAttempted] = useState(false);
   const [isClaimRequest, setIsClaimRequest] = useState(false);
 
+  const [styleGuideFile, setStyleGuideFile] = useState<File | null>(null);
+  type VisualAsset = {
+    type: string;
+    url: string;
+  };
+
+  const [visualAssets, setVisualAssets] = useState<VisualAsset[]>([]);
+  const [selectedVisualAssets, setSelectedVisualAssets] = useState<
+    VisualAsset[]
+  >([]);
+
   const [clinicalFactsFile, setClinicalFactsFile] = useState<File | null>(null);
   const [approvedClaimsFile, setApprovedClaimsFile] = useState<File | null>(
     null,
@@ -248,6 +259,42 @@ export default function Page() {
       setLoadingClaims(false); // STOP LOADING
     }
   }
+
+  async function uploadStyleGuide() {
+    if (!styleGuideFile) {
+      alert("Please select a style guide PDF first.");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", styleGuideFile);
+
+      const res = await fetch("http://127.0.0.1:8000/upload-style-guide", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await res.json();
+
+      if (data.detected_assets) {
+        const assets = data.detected_assets.map((asset: any) => ({
+          type: asset.type,
+          url: `http://127.0.0.1:8000/${asset.file_path}`,
+        }));
+
+        setVisualAssets(assets);
+      }
+    } catch (error) {
+      console.error("Style guide upload failed:", error);
+      alert("Failed to process style guide.");
+    }
+  }
+
   async function refine() {
     try {
       setLoading(true);
@@ -328,6 +375,48 @@ export default function Page() {
 
     let htmlContent = generated;
 
+    // VISUAL ELEMENTS SELECTED BY USER
+    let visualHTML = "";
+
+    selectedVisualAssets.forEach((asset) => {
+      if (asset.type === "logo") {
+        visualHTML += `
+          <div class="logo-area">
+            <img 
+              src="${asset.url}"
+              style="height:60px"
+            />
+          </div>
+        `;
+      }
+
+      if (asset.type === "chart") {
+        visualHTML += `
+          <div style="padding:20px 28px;text-align:center;">
+            <img 
+              src="${asset.url}"
+              style="max-width:100%;border-radius:6px"
+            />
+          </div>
+        `;
+      }
+
+      if (asset.type === "icon") {
+        visualHTML += `
+          <div style="padding:10px 28px;">
+            <img 
+              src="${asset.url}"
+              style="height:40px;margin-right:10px"
+            />
+          </div>
+        `;
+      }
+
+      if (asset.type === "divider") {
+        visualHTML += `<div class="brand-bar"></div>`;
+      }
+    });
+
     const looksLikeHTML =
       htmlContent.includes("<p") ||
       htmlContent.includes("<h") ||
@@ -371,6 +460,7 @@ export default function Page() {
         </div>
       `;
     }
+
     const metadataHTML = `
       <div style="margin-top:40px;font-size:12px;color:#6b7280;">
         <h3 style="color:#002855;">Content Metadata</h3>
@@ -385,7 +475,7 @@ export default function Page() {
         <p><strong>Total Versions:</strong> ${versions.length}</p>
         <p><strong>Export Timestamp:</strong> ${new Date().toISOString()}</p>
       </div>
-      `;
+    `;
 
     const fullHTML = `
   <!DOCTYPE html>
@@ -411,8 +501,6 @@ export default function Page() {
   overflow:hidden;
   box-shadow:0 4px 14px rgba(0,0,0,0.08);
   }
-
-
 
   .content {
   padding:32px;
@@ -464,14 +552,7 @@ export default function Page() {
 
   <div class="container">
 
-  <div class="logo-area">
-  <img 
-  src="https://assets-dam.takeda.com/image/upload/v1760391521/Oncology/Medicines/FRUZAQLA_Logo_PNG.png"
-  style="height:60px"
-  />
-  </div>
-
-<div class="brand-bar"></div>
+  ${visualHTML}
 
   <div class="content">
 
@@ -527,16 +608,14 @@ export default function Page() {
 
       <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Upload Evidence Library
-            </h2>
-          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Upload Evidence Library
+          </h2>
 
           <p className="text-gray-500 text-sm mb-6">
-            Upload clinical facts and approved claims to populate the claims
-            library.
+            Upload clinical facts, approved claims, and brand style guides.
           </p>
+
           {loadingClaims && (
             <div className="mb-6 flex items-center gap-3 text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
               <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
@@ -546,7 +625,7 @@ export default function Page() {
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-3 gap-8">
             {/* Clinical Facts Upload */}
             <div className="border-2 border-dashed border-blue-300 rounded-xl p-6 bg-blue-50 hover:bg-blue-100 transition">
               <h3 className="text-md font-semibold text-blue-800 mb-2">
@@ -608,10 +687,96 @@ export default function Page() {
                 {loadingClaims ? "Uploading..." : "Upload Approved Claims"}
               </button>
             </div>
-          </div>
 
-          <div></div>
+            {/* Style Guide Upload */}
+            <div className="border-2 border-dashed border-purple-300 rounded-xl p-6 bg-purple-50 hover:bg-purple-100 transition">
+              <h3 className="text-md font-semibold text-purple-800 mb-2">
+                Brand Style Guide
+              </h3>
+
+              <p className="text-sm text-purple-700 mb-4">
+                Upload brand guideline PDF containing logos, icons or charts.
+              </p>
+
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setStyleGuideFile(file);
+                }}
+                className="block w-full text-sm text-gray-700 mb-4"
+              />
+
+              <button
+                type="button"
+                onClick={uploadStyleGuide}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition"
+              >
+                Upload Style Guide
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* Detected Visual Assets */}
+        {visualAssets.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Detected Visual Assets
+            </h2>
+
+            <p className="text-gray-500 text-sm mb-6">
+              Visual elements extracted from the uploaded brand style guide.
+              Select which assets should be included in the generated content.
+            </p>
+
+            <div className="grid grid-cols-3 gap-6">
+              {visualAssets.map((asset) => (
+                <label
+                  key={asset.url}
+                  className="border border-gray-200 rounded-lg p-4 flex flex-col items-center gap-3 hover:bg-gray-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    className="self-start"
+                    checked={selectedVisualAssets.some(
+                      (a) => a.url === asset.url,
+                    )}
+                    onChange={() => {
+                      if (
+                        selectedVisualAssets.some((a) => a.url === asset.url)
+                      ) {
+                        setSelectedVisualAssets(
+                          selectedVisualAssets.filter(
+                            (a) => a.url !== asset.url,
+                          ),
+                        );
+                      } else {
+                        setSelectedVisualAssets([
+                          ...selectedVisualAssets,
+                          asset,
+                        ]);
+                      }
+                    }}
+                  />
+
+                  <img
+                    src={asset.url}
+                    alt={asset.type}
+                    className="w-24 border rounded-md"
+                  />
+
+                  <span className="text-sm text-gray-700 capitalize">
+                    {asset.type}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">
             Claim Retrieval

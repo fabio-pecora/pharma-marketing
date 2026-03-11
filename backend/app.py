@@ -8,8 +8,10 @@ from database import get_connection
 from pypdf import PdfReader
 from openai import OpenAI
 from pdf2image import convert_from_bytes
+from visual_assets_service import process_style_guide
 import pytesseract
 
+from fastapi.staticfiles import StaticFiles
 from models import ClaimSelectionRequest, RefineRequest, ClaimRequestEmail
 from pipeline import generate_project_content, refine_generated_content, generate_claim_request_email
 from claims_service import get_recommended_claims, get_claims_by_ids
@@ -18,6 +20,7 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tessera
 POPPLER_PATH = r"C:\Users\fabio\Desktop\poppler-25.12.0\Library\bin"
 
 app = FastAPI()
+app.mount("/visual_assets", StaticFiles(directory="visual_assets"), name="visual_assets")
 client = OpenAI()
 
 
@@ -304,4 +307,22 @@ async def upload_claims_file(
 
     return {
         "rows_inserted": inserted
+    }
+
+import os
+
+@app.post("/upload-style-guide")
+async def upload_style_guide(file: UploadFile = File(...)):
+
+    os.makedirs("uploads", exist_ok=True)
+
+    file_location = f"uploads/{file.filename}"
+
+    with open(file_location, "wb") as buffer:
+        buffer.write(await file.read())
+
+    detected_assets = process_style_guide(file_location)
+
+    return {
+        "detected_assets": detected_assets
     }
