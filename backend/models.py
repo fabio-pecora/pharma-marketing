@@ -9,7 +9,7 @@ class ClaimSelectionRequest(BaseModel):
     tone: str
     therapeutic_area: str
     claim_ids: List[int]
-
+    brand_colors: List[str] = []
 
 class RefineRequest(BaseModel):
     project_id: Optional[int] = None

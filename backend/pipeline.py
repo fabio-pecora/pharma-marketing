@@ -13,9 +13,27 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # ----------------------------------------------------
 # GENERATE INITIAL CONTENT
 # ----------------------------------------------------
-def generate_project_content(content_type, audience, goal, tone, therapeutic_area, claim_ids):
+def generate_project_content(
+    content_type,
+    audience,
+    goal,
+    tone,
+    therapeutic_area,
+    claim_ids,
+    brand_colors=None
+):
 
-    project_id = create_project(content_type, audience, goal, tone, therapeutic_area)
+    if brand_colors is None:
+        brand_colors = []
+
+    project_id = create_project(
+        content_type,
+        audience,
+        goal,
+        tone,
+        therapeutic_area
+    )
+
     yield f"__PROJECT_ID__:{project_id}\n"
 
     claims = get_claims_by_ids(claim_ids)
@@ -23,6 +41,29 @@ def generate_project_content(content_type, audience, goal, tone, therapeutic_are
     claims_text = "\n".join(
         [f"- {c['claim_text']} ({c['citation']})" for c in claims]
     )
+
+    # -----------------------------------
+    # Brand colors section
+    # -----------------------------------
+
+    if brand_colors:
+        brand_color_text = ", ".join(brand_colors)
+
+        brand_color_prompt = f"""
+BRAND COLORS
+Use the following brand colors when referencing design elements,
+visual hierarchy, or styling suggestions in the content.
+
+{brand_color_text}
+
+Do NOT invent additional colors outside this palette.
+"""
+    else:
+        brand_color_prompt = ""
+
+    # -----------------------------------
+    # Format rules
+    # -----------------------------------
 
     if content_type == "email":
         format_rules = """
@@ -63,6 +104,10 @@ BODY:
     else:
         format_rules = ""
 
+    # -----------------------------------
+    # Prompt
+    # -----------------------------------
+
     prompt = f"""
 You are generating pharmaceutical marketing content.
 
@@ -91,6 +136,8 @@ AUDIENCE: {audience}
 GOAL: {goal}
 TONE: {tone}
 
+{brand_color_prompt}
+
 {format_rules}
 
 Return ONLY the requested format.
@@ -100,13 +147,23 @@ Return ONLY the requested format.
         model="gpt-4o-mini",
         temperature=0.4,
         messages=[
-            {"role": "system", "content": "You generate compliant pharmaceutical marketing content."},
-            {"role": "user", "content": prompt}
+            {
+                "role": "system",
+                "content": "You generate compliant pharmaceutical marketing content."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
         ],
         stream=True
     )
 
     generated_text = ""
+
+    # -----------------------------------
+    # Streaming tokens to frontend
+    # -----------------------------------
 
     for chunk in response:
 
@@ -118,18 +175,33 @@ Return ONLY the requested format.
             generated_text += token
 
             yield token
+
+    # -----------------------------------
+    # Compliance validation
+    # -----------------------------------
+
     compliance_report = validate_claims(generated_text, claims)
 
     compliance_passed = all(
-        v["status"] != "fail" for v in compliance_report.values()
+        v["status"] != "fail"
+        for v in compliance_report.values()
     )
 
-    # store version
-    store_version(project_id, 1, generated_text, compliance_passed)
+    # -----------------------------------
+    # Store generated version
+    # -----------------------------------
 
-    # ---------------------------------------------
-    # STORE METADATA (for compliance UI)
-    # ---------------------------------------------
+    store_version(
+        project_id,
+        1,
+        generated_text,
+        compliance_passed
+    )
+
+    # -----------------------------------
+    # Store project metadata
+    # -----------------------------------
+
     conn = get_connection()
     cur = conn.cursor()
 

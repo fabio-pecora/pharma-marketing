@@ -59,13 +59,14 @@ def generate_content(request: ClaimSelectionRequest):
     try:
 
         generator = generate_project_content(
-            request.content_type,
-            request.audience,
-            request.goal,
-            request.tone,
-            request.therapeutic_area,
-            request.claim_ids
-        )
+        request.content_type,
+        request.audience,
+        request.goal,
+        request.tone,
+        request.therapeutic_area,
+        request.claim_ids,
+        request.brand_colors
+    )
 
         return StreamingResponse(generator, media_type="text/plain")
 

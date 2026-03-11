@@ -28,6 +28,7 @@ export default function Page() {
   const [audience, setAudience] = useState("HCP");
   const [categories, setCategories] = useState<string[]>(["efficacy"]);
   const [therapeuticArea, setTherapeuticArea] = useState("Oncology");
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
 
   const [contentType, setContentType] = useState("email");
   const [goal, setGoal] = useState("education");
@@ -182,6 +183,7 @@ export default function Page() {
           tone,
           therapeutic_area: therapeuticArea,
           claim_ids: selectedClaims,
+          brand_colors: selectedColors,
         }),
       });
 
@@ -805,14 +807,31 @@ export default function Page() {
 
             <div className="flex gap-4">
               {brandColors.map((color) => (
-                <div key={color} className="flex flex-col items-center">
+                <button
+                  key={color}
+                  onClick={() => {
+                    if (selectedColors.includes(color)) {
+                      setSelectedColors(
+                        selectedColors.filter((c) => c !== color),
+                      );
+                    } else {
+                      setSelectedColors([...selectedColors, color]);
+                    }
+                  }}
+                  className={`flex flex-col items-center p-2 rounded-lg border
+                    ${
+                      selectedColors.includes(color)
+                        ? "border-blue-600 ring-2 ring-blue-300"
+                        : "border-gray-300"
+                    }`}
+                >
                   <div
                     className="w-14 h-14 rounded-md border shadow-sm"
                     style={{ backgroundColor: color }}
                   />
 
                   <span className="text-xs text-gray-600 mt-1">{color}</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
