@@ -142,7 +142,6 @@ def check_off_label(content):
 
     return "pass"
 
-
 # -----------------------------
 # FAIR BALANCE RULE CHECK
 # -----------------------------

@@ -56,6 +56,11 @@ export default function Page() {
   const [retrievalAttempted, setRetrievalAttempted] = useState(false);
   const [isClaimRequest, setIsClaimRequest] = useState(false);
 
+  const [clinicalFactsFile, setClinicalFactsFile] = useState<File | null>(null);
+  const [approvedClaimsFile, setApprovedClaimsFile] = useState<File | null>(
+    null,
+  );
+
   const selectStyle =
     "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
@@ -208,6 +213,35 @@ export default function Page() {
       alert("Generation failed. Check backend terminal.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function uploadFile(file: File | null, type: string) {
+    if (!file) {
+      alert("Please select a file first");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("material_type", type);
+
+      const res = await fetch("http://127.0.0.1:8000/upload-claims-file", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await res.json();
+
+      alert(`${data.rows_inserted} rows uploaded`);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      alert("File upload failed. Check backend.");
     }
   }
   async function refine() {
@@ -488,6 +522,66 @@ export default function Page() {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Upload Evidence Library
+          </h2>
+
+          <p className="text-gray-500 text-sm mb-6">
+            Upload clinical facts and approved claims to populate the claims
+            library.
+          </p>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Clinical Facts File
+              </label>
+
+              <input
+                type="file"
+                accept=".csv,.pdf"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setClinicalFactsFile(file);
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={() => uploadFile(clinicalFactsFile, "clinical_fact")}
+                className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Upload Clinical Facts
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Approved Claims File
+              </label>
+
+              <input
+                type="file"
+                accept=".csv,.pdf"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setApprovedClaimsFile(file);
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={() => uploadFile(approvedClaimsFile, "claim")}
+                className="mt-3 bg-green-600 text-white px-4 py-2 rounded"
+              >
+                Upload Approved Claims
+              </button>
+            </div>
+          </div>
+        </div>
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">
             Claim Retrieval
@@ -777,9 +871,9 @@ export default function Page() {
                 </h3>
 
                 <div className="space-y-3">
-                  {claimsUsed.map((claim) => (
+                  {claimsUsed.map((claim, index) => (
                     <div
-                      key={claim.id}
+                      key={`${claim.id}-${index}`}
                       className="border border-gray-200 rounded-lg p-3 bg-gray-50"
                     >
                       <div className="text-sm text-gray-800">
