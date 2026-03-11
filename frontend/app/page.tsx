@@ -59,6 +59,7 @@ export default function Page() {
   const [styleGuideFile, setStyleGuideFile] = useState<File | null>(null);
   type VisualAsset = {
     type: string;
+    description?: string;
     url: string;
   };
 
@@ -284,6 +285,7 @@ export default function Page() {
       if (data.detected_assets) {
         const assets = data.detected_assets.map((asset: any) => ({
           type: asset.type,
+          description: asset.description,
           url: `http://127.0.0.1:8000/${asset.file_path}`,
         }));
 
@@ -764,13 +766,21 @@ export default function Page() {
 
                   <img
                     src={asset.url}
-                    alt={asset.type}
+                    alt={asset.description || asset.type}
                     className="w-24 border rounded-md"
                   />
 
-                  <span className="text-sm text-gray-700 capitalize">
-                    {asset.type}
-                  </span>
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-gray-800 capitalize">
+                      {asset.type}
+                    </span>
+
+                    {asset.description && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {asset.description}
+                      </p>
+                    )}
+                  </div>
                 </label>
               ))}
             </div>

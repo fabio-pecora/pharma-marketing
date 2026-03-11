@@ -13,7 +13,7 @@ def get_recommended_claims(categories, therapeutic_area):
     query = """
     SELECT id, claim_text, citation
     FROM claims
-    WHERE LOWER(category) = ANY(%s)
+    WHERE LOWER(category) = ANY(%s::text[])
     AND LOWER(therapeutic_area) = LOWER(%s)
     LIMIT 10
     """
