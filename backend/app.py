@@ -12,7 +12,7 @@ from visual_assets_service import process_style_guide
 import pytesseract
 
 from fastapi.staticfiles import StaticFiles
-from models import ClaimSelectionRequest, RefineRequest, ClaimRequestEmail
+from models import ClaimSelectionRequest, RefineRequest, ClaimRequestEmail, ConversationRequest
 from pipeline import generate_project_content, refine_generated_content, generate_claim_request_email
 from claims_service import get_recommended_claims, get_claims_by_ids
 
@@ -328,3 +328,16 @@ async def upload_style_guide(file: UploadFile = File(...)):
         "detected_assets": result["detected_assets"],
         "brand_colors": result["brand_colors"]
     }
+
+    from models import ConversationRequest
+from pipeline import guided_conversation_step
+
+@app.post("/guided-conversation")
+def guided_conversation(req: ConversationRequest):
+
+    result = guided_conversation_step(
+        req.message,
+        req.conversation_history
+    )
+
+    return {"response": result}

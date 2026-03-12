@@ -467,3 +467,94 @@ BODY:
     )
 
     return response.choices[0].message.content
+
+from openai import OpenAI
+from config import OPENAI_API_KEY
+
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+def guided_conversation_step(message, history):
+
+    system_prompt = """
+You are an AI assistant guiding a pharmaceutical marketing workflow.
+
+Your goal is to determine these fields:
+
+- audience (HCP, Patient, CareGiver)
+- content_type (email, website, social)
+- goal (education, awareness, conversion)
+- tone (clinical, empathetic, educational)
+- therapeutic_area (Oncology)
+- claim_categories (indication, efficacy, safety, dosing)
+
+IMPORTANT RULES:
+
+1. Extract only the information that is explicitly stated or clearly implied by the user.
+
+2. NEVER invent values for fields that the user did not mention.
+
+3. If a field is missing, ask a question to obtain it.
+
+Example:
+
+User:
+"I want an email explaining safety of oncology treatment for patients"
+
+You should extract:
+
+{
+ "audience": "Patient",
+ "content_type": "email",
+ "therapeutic_area": "Oncology",
+ "claim_categories": ["safety"]
+}
+
+But you should NOT guess the goal or tone.
+
+Instead ask the user:
+
+"What is the primary goal of this content? (education, awareness, conversion)"
+
+4. If the user's message implies a claim category, infer it automatically.
+
+Examples:
+- safety → claim_categories=["safety"]
+- dosing schedule → claim_categories=["dosing"]
+- treatment effectiveness → claim_categories=["efficacy"]
+- approved use → claim_categories=["indication"]
+
+5. Ask questions only for the fields that are still missing.
+
+6. When ALL fields are known, return ONLY JSON in this format:
+
+{
+ "audience": "...",
+ "content_type": "...",
+ "goal": "...",
+ "tone": "...",
+ "therapeutic_area": "...",
+ "claim_categories": [...]
+}
+
+7. If the request does not match any claim category return:
+
+"claim_categories": ["request_claim"]
+
+Return JSON only when all fields are known.
+Otherwise ask the next question.
+"""
+
+    messages = [{"role":"system","content":system_prompt}]
+
+    for h in history:
+        messages.append({"role":"user","content":h})
+
+    messages.append({"role":"user","content":message})
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.2
+    )
+
+    return response.choices[0].message.content

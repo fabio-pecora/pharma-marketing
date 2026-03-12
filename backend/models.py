@@ -23,3 +23,7 @@ class ClaimRequestEmail(BaseModel):
     audience: str
     category: str
     therapeutic_area: str
+
+class ConversationRequest(BaseModel):
+    message: str
+    conversation_history: List[str]

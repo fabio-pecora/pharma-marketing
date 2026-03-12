@@ -79,10 +79,15 @@ export default function Page() {
   const selectStyle =
     "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
-  async function loadClaims() {
-    setRetrievalAttempted(true);
+  const [chatMessages, setChatMessages] = useState<string[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [guidedMode, setGuidedMode] = useState(false);
 
-    if (categories.length === 0) {
+  async function loadClaims(forcedCategories?: string[]) {
+    setRetrievalAttempted(true);
+    const categoriesToUse = forcedCategories || categories;
+
+    if (categoriesToUse.length === 0) {
       alert("Please select at least one claim category.");
       return;
     }
@@ -93,7 +98,9 @@ export default function Page() {
     }
 
     try {
-      const categoryQuery = categories.map((c) => `categories=${c}`).join("&");
+      const categoryQuery = categoriesToUse
+        .map((c) => `categories=${c}`)
+        .join("&");
 
       const res = await fetch(
         `http://127.0.0.1:8000/recommended-claims?${categoryQuery}&therapeutic_area=${therapeuticArea}`,
@@ -102,6 +109,24 @@ export default function Page() {
 
       if (Array.isArray(data)) {
         setClaims(data);
+
+        setTimeout(() => {
+          const el = document.getElementById("available-claims");
+
+          if (el) {
+            el.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+
+            // highlight animation
+            el.classList.add("ring-4", "ring-blue-300");
+
+            setTimeout(() => {
+              el.classList.remove("ring-4", "ring-blue-300");
+            }, 1200);
+          }
+        }, 300);
       } else {
         setClaims([]);
       }
@@ -700,6 +725,52 @@ text-align:center;
     URL.revokeObjectURL(url);
   }
 
+  async function sendChat() {
+    const res = await fetch("http://127.0.0.1:8000/guided-conversation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: chatInput,
+        conversation_history: chatMessages,
+      }),
+    });
+
+    const data = await res.json();
+
+    setChatMessages([...chatMessages, chatInput, data.response]);
+
+    setChatInput("");
+
+    try {
+      const parsed = JSON.parse(data.response);
+
+      if (parsed.audience) setAudience(parsed.audience);
+      if (parsed.content_type) setContentType(parsed.content_type);
+      if (parsed.goal) setGoal(parsed.goal);
+      if (parsed.tone) setTone(parsed.tone);
+      if (parsed.therapeutic_area) setTherapeuticArea(parsed.therapeutic_area);
+
+      if (parsed.claim_categories) {
+        const detectedCategories = parsed.claim_categories;
+
+        setCategories(detectedCategories);
+
+        const message = `Perfect! I identified the claim category as "${detectedCategories.join(", ")}".
+                          Matching approved claims are now loaded below. 
+                          Select the ones you want and click Generate Content.`;
+
+        setChatMessages((prev) => [...prev, message]);
+
+        if (detectedCategories.includes("request_claim")) {
+          requestClaimEmail();
+        } else {
+          loadClaims(detectedCategories);
+        }
+      }
+    } catch (e) {
+      // response was a question, not JSON
+    }
+  }
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="bg-white border-b shadow-sm">
@@ -715,7 +786,10 @@ text-align:center;
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+        <div
+          id="claims-section"
+          className="bg-white border border-gray-200 rounded-xl shadow-sm p-7"
+        >
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Upload Evidence Library
           </h2>
@@ -837,7 +911,10 @@ text-align:center;
         )}
         {/* Detected Visual Assets */}
         {visualAssets.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+          <div
+            id="claims-section"
+            className="bg-white border border-gray-200 rounded-xl shadow-sm p-7"
+          >
             <h2 className="text-lg font-semibold text-gray-900 mb-2">
               Detected Visual Assets
             </h2>
@@ -895,7 +972,10 @@ text-align:center;
           </div>
         )}
         {brandColors.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+          <div
+            id="brand-colors"
+            className="bg-white border border-gray-200 rounded-xl shadow-sm p-7"
+          >
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Brand Colors
             </h2>
@@ -931,6 +1011,36 @@ text-align:center;
             </div>
           </div>
         )}
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Guided Content Creation
+          </h2>
+
+          <div className="space-y-2 mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+            {chatMessages.map((m, i) => (
+              <div
+                key={i}
+                className="text-sm text-gray-900 leading-relaxed bg-white border border-gray-200 rounded-md px-3 py-2"
+              >
+                {m}
+              </div>
+            ))}
+          </div>
+
+          <input
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Describe the marketing content you want..."
+            className="border border-gray-300 p-3 w-full rounded-lg text-black bg-white placeholder-gray-500"
+          />
+
+          <button
+            onClick={sendChat}
+            className="mt-2 bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Send
+          </button>
+        </div>
 
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">
@@ -1028,7 +1138,7 @@ text-align:center;
           </div>
 
           <button
-            onClick={loadClaims}
+            onClick={() => loadClaims()}
             className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
           >
             Retrieve Claims
@@ -1046,7 +1156,10 @@ text-align:center;
             </p>
           </div>
         ) : claims.length > 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-7">
+          <div
+            id="available-claims"
+            className="bg-white border border-gray-200 rounded-xl shadow-sm p-7"
+          >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">
                 Available Claims
