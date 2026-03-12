@@ -88,6 +88,8 @@ export default function Page() {
   const [chatInput, setChatInput] = useState("");
   const [guidedMode, setGuidedMode] = useState(false);
 
+  const [botThinking, setBotThinking] = useState(false);
+
   async function loadClaims(forcedCategories?: string[]) {
     setRetrievalAttempted(true);
     const categoriesToUse = forcedCategories || categories;
@@ -732,6 +734,7 @@ text-align:center;
 
   async function sendChat() {
     const userMessage = chatInput;
+    setBotThinking(true);
 
     // show the user message immediately
     setChatMessages((prev) => [...prev, { role: "user", text: userMessage }]);
@@ -748,6 +751,7 @@ text-align:center;
     });
 
     const data = await res.json();
+    setBotThinking(false);
 
     try {
       const parsed = JSON.parse(data.response);
@@ -1053,6 +1057,17 @@ text-align:center;
                 </div>
               </div>
             ))}
+
+            {/* BOT TYPING INDICATOR */}
+            {botThinking && (
+              <div className="flex justify-start">
+                <div className="mr-2 text-xl">🤖</div>
+
+                <div className="bg-white border border-gray-200 px-4 py-2 rounded-xl text-sm shadow text-gray-500">
+                  typing...
+                </div>
+              </div>
+            )}
           </div>
 
           <input
