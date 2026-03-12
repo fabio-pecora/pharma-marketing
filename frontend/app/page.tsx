@@ -736,9 +736,7 @@ text-align:center;
     const userMessage = chatInput;
     setBotThinking(true);
 
-    // show the user message immediately
     setChatMessages((prev) => [...prev, { role: "user", text: userMessage }]);
-
     setChatInput("");
 
     const res = await fetch("http://127.0.0.1:8000/guided-conversation", {
@@ -764,26 +762,41 @@ text-align:center;
 
       if (parsed.claim_categories) {
         const detectedCategories = parsed.claim_categories;
-
         setCategories(detectedCategories);
 
-        const message = `Perfect! I identified the claim category as "${detectedCategories.join(", ")}".
-  Matching approved claims are now loaded below.
-  Select the ones you want and click Generate Content.`;
+        // CLAIM REQUEST
+        if (detectedCategories.includes("request_claim")) {
+          const message = `
+  I couldn't find a matching approved claim category for your request.
+
+  This system supports pharmaceutical marketing workflows using approved clinical claims.
+
+  I will generate a request email to the Medical, Legal, and Regulatory (MLR) team so they can review whether a new claim can be created.
+  `;
+
+          setChatMessages((prev) => [
+            ...prev,
+            { role: "assistant", text: message },
+          ]);
+
+          requestClaimEmail();
+          return;
+        }
+
+        // NORMAL CLAIM FLOW
+        const message = `Perfect! I identified the claim category as "${detectedCategories.join(
+          ", ",
+        )}". Matching approved claims are now loaded below. Select the ones you want and click Generate Content.`;
 
         setChatMessages((prev) => [
           ...prev,
           { role: "assistant", text: message },
         ]);
 
-        if (detectedCategories.includes("request_claim")) {
-          requestClaimEmail();
-        } else {
-          loadClaims(detectedCategories);
-        }
+        loadClaims(detectedCategories);
       }
     } catch (e) {
-      // response was a question
+      // response was natural text
       setChatMessages((prev) => [
         ...prev,
         { role: "assistant", text: data.response },
