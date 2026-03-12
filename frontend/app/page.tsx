@@ -79,7 +79,12 @@ export default function Page() {
   const selectStyle =
     "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
-  const [chatMessages, setChatMessages] = useState<string[]>([]);
+  type ChatMessage = {
+    role: "user" | "assistant";
+    text: string;
+  };
+
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [guidedMode, setGuidedMode] = useState(false);
 
@@ -726,20 +731,23 @@ text-align:center;
   }
 
   async function sendChat() {
+    const userMessage = chatInput;
+
+    // show the user message immediately
+    setChatMessages((prev) => [...prev, { role: "user", text: userMessage }]);
+
+    setChatInput("");
+
     const res = await fetch("http://127.0.0.1:8000/guided-conversation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        message: chatInput,
-        conversation_history: chatMessages,
+        message: userMessage,
+        conversation_history: chatMessages.map((m) => m.text),
       }),
     });
 
     const data = await res.json();
-
-    setChatMessages([...chatMessages, chatInput, data.response]);
-
-    setChatInput("");
 
     try {
       const parsed = JSON.parse(data.response);
@@ -756,10 +764,13 @@ text-align:center;
         setCategories(detectedCategories);
 
         const message = `Perfect! I identified the claim category as "${detectedCategories.join(", ")}".
-                          Matching approved claims are now loaded below. 
-                          Select the ones you want and click Generate Content.`;
+  Matching approved claims are now loaded below.
+  Select the ones you want and click Generate Content.`;
 
-        setChatMessages((prev) => [...prev, message]);
+        setChatMessages((prev) => [
+          ...prev,
+          { role: "assistant", text: message },
+        ]);
 
         if (detectedCategories.includes("request_claim")) {
           requestClaimEmail();
@@ -768,7 +779,11 @@ text-align:center;
         }
       }
     } catch (e) {
-      // response was a question, not JSON
+      // response was a question
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: data.response },
+      ]);
     }
   }
   return (
@@ -1016,13 +1031,26 @@ text-align:center;
             Guided Content Creation
           </h2>
 
-          <div className="space-y-2 mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+          <div className="space-y-3 mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-72 overflow-y-auto">
             {chatMessages.map((m, i) => (
               <div
                 key={i}
-                className="text-sm text-gray-900 leading-relaxed bg-white border border-gray-200 rounded-md px-3 py-2"
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                {m}
+                {m.role === "assistant" && (
+                  <div className="mr-2 text-xl">🤖</div>
+                )}
+
+                <div
+                  className={`max-w-[70%] px-4 py-2 rounded-xl text-sm shadow
+                  ${
+                    m.role === "user"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white border border-gray-200 text-gray-900"
+                  }`}
+                >
+                  {m.text}
+                </div>
               </div>
             ))}
           </div>
@@ -1030,6 +1058,9 @@ text-align:center;
           <input
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") sendChat();
+            }}
             placeholder="Describe the marketing content you want..."
             className="border border-gray-300 p-3 w-full rounded-lg text-black bg-white placeholder-gray-500"
           />
