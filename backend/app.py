@@ -10,6 +10,8 @@ from openai import OpenAI
 from pdf2image import convert_from_bytes
 from visual_assets_service import process_style_guide
 import pytesseract
+import base64
+from PIL import Image
 
 from fastapi.staticfiles import StaticFiles
 from models import ClaimSelectionRequest, RefineRequest, ClaimRequestEmail, ConversationRequest
@@ -25,10 +27,12 @@ client = OpenAI()
 
 
 ALLOWED_CATEGORIES = [
-    "indication",
     "efficacy",
     "safety",
-    "dosing"
+    "dosing",
+    "mechanism_of_action",
+    "patient_population",
+    "clinical_evidence"
 ]
 
 app.add_middleware(
@@ -220,6 +224,7 @@ def extract_claims_with_llm(text):
             print("LLM returned invalid JSON:", raw)
             return []
 
+
 @app.post("/upload-claims-file")
 async def upload_claims_file(
     file: UploadFile = File(...),
@@ -273,13 +278,26 @@ async def upload_claims_file(
 
         print("EXTRACTED TEXT SAMPLE:", text[:500])
 
-        extracted_claims = extract_claims_with_llm(text)
+        # Extract claims and associated images from PDF
+        extracted_claims = extract_claim_and_asset(contents)
+
+        print("EXTRACTED CLAIMS:", extracted_claims)
+
+        # categorize extracted claims
+        claim_texts = [c["claim_text"] for c in extracted_claims]
+
+        categorized = categorize_claims(claim_texts)
+
+        category_map = {
+            c["claim_text"]: c["category"]
+            for c in categorized
+        }
 
         print("EXTRACTED CLAIMS:", extracted_claims)
 
         for claim in extracted_claims:
 
-            category = claim.get("category", "").lower().strip()
+            category = category_map.get(claim["claim_text"], "clinical_evidence")
 
             if category not in ALLOWED_CATEGORIES:
                 continue
@@ -289,6 +307,7 @@ async def upload_claims_file(
                 INSERT INTO claims
                 (claim_text, citation, category, therapeutic_area, material_type)
                 VALUES (%s,%s,%s,%s,%s)
+                RETURNING id
                 """,
                 (
                     claim["claim_text"],
@@ -298,6 +317,22 @@ async def upload_claims_file(
                     material_type
                 )
             )
+
+            claim_id = cur.fetchone()[0]
+
+            # Save associated image asset
+            if claim.get("image"):
+                cur.execute(
+                    """
+                    INSERT INTO claim_assets (claim_id, image_data, page_number)
+                    VALUES (%s,%s,%s)
+                    """,
+                    (
+                        claim_id,
+                        claim["image"],
+                        claim["page"]
+                    )
+                )
 
             inserted += 1
 
@@ -341,3 +376,96 @@ def guided_conversation(req: ConversationRequest):
     )
 
     return {"response": result}
+
+def extract_claim_and_asset(file_bytes):
+
+    images = convert_from_bytes(file_bytes, poppler_path=POPPLER_PATH)
+
+    import re
+
+    citation_pattern = r"[¹²³⁴⁵⁶⁷⁸⁹⁰]+|\d+\–?\d*"
+
+    results = []
+
+    for page_number, img in enumerate(images):
+
+        width, height = img.size
+
+        # --- REGION 1 : CLAIM TEXT ---
+        claim_region = img.crop((0, 0, width, int(height * 0.25)))
+
+        claim_text = pytesseract.image_to_string(claim_region)
+
+        claim_text = claim_text.replace("\n", " ").strip()
+
+        if not re.search(citation_pattern, claim_text):
+            continue
+
+        claim_sentence = claim_text.split(".")[0]
+
+        # --- REGION 2 : IMAGE BELOW CLAIM ---
+        asset_region = img.crop((0, int(height * 0.25), width, int(height * 0.70)))
+
+        import io
+        img_bytes = io.BytesIO()
+        asset_region.save(img_bytes, format="PNG")
+
+        asset_binary = img_bytes.getvalue()
+
+        results.append({
+            "claim_text": claim_sentence,
+            "citation": "Clinical Study",
+            "image": asset_binary,
+            "page": page_number + 1
+        })
+
+    return results
+
+def categorize_claims(claims):
+
+    prompt = f"""
+You are categorizing pharmaceutical marketing claims.
+
+Each claim must be assigned ONE category from this list:
+
+efficacy
+safety
+dosing
+mechanism_of_action
+patient_population
+clinical_evidence
+
+Return ONLY JSON in this format:
+
+[
+  {{
+    "claim_text": "...",
+    "category": "..."
+  }}
+]
+
+Claims:
+{claims}
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0,
+        messages=[
+            {"role": "system", "content": "You classify pharmaceutical claims."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    import json
+
+    raw = response.choices[0].message.content.strip()
+
+    if raw.startswith("```"):
+        raw = raw.replace("```json", "").replace("```", "").strip()
+
+    try:
+        return json.loads(raw)
+    except:
+        print("Failed categorization:", raw)
+        return []

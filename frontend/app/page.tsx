@@ -6,6 +6,7 @@ type Claim = {
   id: number;
   claim_text: string;
   citation: string;
+  image?: string | null;
 };
 
 function extractText(html: string) {
@@ -415,17 +416,6 @@ export default function Page() {
     setVersions(updated);
   }
 
-  async function imageToBase64(url: string) {
-    const response = await fetch(url);
-    const blob = await response.blob();
-
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
-  }
-
   async function exportHTML() {
     if (!generated) return;
 
@@ -721,15 +711,18 @@ text-align:center;
 
     const url = URL.createObjectURL(blob);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${contentType}_content.html`;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${contentType}_content.html`;
+    link.style.display = "none";
 
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    document.body.appendChild(link);
+    link.click();
 
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
   }
 
   async function sendChat() {
@@ -802,6 +795,74 @@ text-align:center;
         { role: "assistant", text: data.response },
       ]);
     }
+  }
+
+  function addClaimImage(imageBase64: string) {
+    const htmlImage = `
+  <div style="margin:24px 0;text-align:center;">
+    <img
+      src="data:image/png;base64,${imageBase64}"
+      style="max-width:100%;border-radius:6px;"
+    />
+  </div>
+  `;
+
+    const updated = [...versions];
+    let current = updated[currentVersion];
+
+    // Convert plain text to paragraphs if needed
+    if (!current.includes("<p")) {
+      current = current
+        .split("\n")
+        .filter((line) => line.trim() !== "")
+        .map((line) => `<p>${line.trim()}</p>`)
+        .join("");
+    }
+
+    const paragraphs = current.split("</p>");
+
+    const signatureWords = [
+      "best regards",
+      "regards",
+      "sincerely",
+      "thank you",
+    ];
+
+    let insertPosition = paragraphs.length;
+
+    for (let i = 0; i < paragraphs.length; i++) {
+      const text = paragraphs[i].toLowerCase();
+
+      if (signatureWords.some((word) => text.includes(word))) {
+        insertPosition = i;
+        break;
+      }
+    }
+
+    paragraphs.splice(insertPosition, 0, htmlImage);
+
+    updated[currentVersion] = paragraphs.join("</p>");
+
+    setVersions(updated);
+  }
+
+  function formatPreview(content: string) {
+    if (!content) return "";
+
+    const looksLikeHTML =
+      content.includes("<p") ||
+      content.includes("<h") ||
+      content.includes("<div");
+
+    if (looksLikeHTML) return content;
+
+    return content
+      .replace(/SUBJECT:\s*(.*)/i, "<h2>$1</h2>")
+      .replace(/BODY:/i, "")
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .map((line) => `<p>${line.trim()}</p>`)
+      .join("");
   }
   return (
     <div className="min-h-screen bg-gray-100">
@@ -1117,7 +1178,14 @@ text-align:center;
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                {["indication", "efficacy", "safety", "dosing"].map((cat) => {
+                {[
+                  "efficacy",
+                  "safety",
+                  "dosing",
+                  "mechanism_of_action",
+                  "patient_population",
+                  "clinical_evidence",
+                ].map((cat) => {
                   const selected = categories.includes(cat);
 
                   return (
@@ -1241,12 +1309,20 @@ text-align:center;
                     onChange={() => toggleClaim(claim.id)}
                   />
 
-                  <span className="text-gray-800 text-sm">
-                    {claim.claim_text}
-                    <span className="text-gray-500 ml-1">
-                      ({claim.citation})
-                    </span>
-                  </span>
+                  <div className="text-gray-800 text-sm">
+                    <div>
+                      {claim.claim_text}
+                      <span className="text-gray-500 ml-1">
+                        ({claim.citation})
+                      </span>
+                    </div>
+
+                    {claim.image && (
+                      <div className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                        🖼 Supporting image available
+                      </div>
+                    )}
+                  </div>
                 </label>
               ))}
             </div>
@@ -1390,7 +1466,10 @@ text-align:center;
               onChange={(e) => updateCurrentVersion(e.target.value)}
               className="w-full border border-gray-300 rounded-lg p-4 text-black bg-white h-64"
             />
-
+            <div
+              className="mt-6 border rounded-lg p-8 bg-white text-gray-900 leading-relaxed max-w-2xl mx-auto"
+              dangerouslySetInnerHTML={{ __html: formatPreview(generated) }}
+            />
             {/* APPROVED CLAIMS USED */}
             {claimsUsed.length > 0 && (
               <div className="mt-6 border-t pt-6">
@@ -1407,9 +1486,28 @@ text-align:center;
                       <div className="text-sm text-gray-800">
                         {claim.claim_text}
                       </div>
+
                       <div className="text-xs text-gray-500 mt-1">
                         Citation: {claim.citation}
                       </div>
+
+                      {claim.image && (
+                        <div className="mt-2 space-y-2">
+                          <img
+                            src={`data:image/png;base64,${claim.image}`}
+                            className="max-h-32 rounded border"
+                          />
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => addClaimImage(claim.image!)}
+                              className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                            >
+                              Insert Image
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
