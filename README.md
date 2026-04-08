@@ -1,3 +1,6 @@
+# check the demo:
+https://drive.google.com/file/d/1cCxPYMAWl1J_A49EPUb_zbaNN1vd8nTw/view?usp=sharing
+
 # FRUZAQLA Marketing Content Generator
 
 AI-assisted system for generating **compliant pharmaceutical marketing content** grounded in approved clinical claims.
